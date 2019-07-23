@@ -10,12 +10,13 @@ fn main() {
     f.read_to_end(&mut rom_file);
 
     // put the rom file into the memory ram
-    let mut mem = MMU::new();
-    mem.from_rom_file(&rom_file);
+    let mut mmu = MMU::new();
+    mmu.from_rom_file(&rom_file);
 
     // run make CPU run instructions over ram
+    println!("MMU BEFORE: {:?}", mmu);
     let mut cpu = CPU::new();
     loop {
-        cpu.run_instruction(&mut mem);
+        cpu.run_instruction(&mut mmu);
     }
 }

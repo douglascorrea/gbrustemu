@@ -1,5 +1,19 @@
+use std::fmt;
+
 pub struct MMU {
-    ram: [u8; 65536], //0X0000 to 0xFFFF
+    ram: [u8; 65_536], //0X0000 to 0xFFFF
+}
+impl fmt::Debug for MMU {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "VRAM: {:?}\n\nOAM RAM: {:?}\n\nIO RAM: {:?}\n\nH RAM: {:?}\n\n",
+            &self.ram[0x8000..0xA000],
+            &self.ram[0xFE00..0xFEA0],
+            &self.ram[0xFF00..0xFF80],
+            &self.ram[0xFE80..0xFFFF],
+        )
+    }
 }
 
 impl MMU {

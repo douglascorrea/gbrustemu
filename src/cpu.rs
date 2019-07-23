@@ -1,7 +1,6 @@
 use crate::instruction::Instruction;
 use crate::mmu::MMU;
 
-use core::num::FpCategory::Infinite;
 use std::fmt;
 
 pub struct CPU {
@@ -173,8 +172,8 @@ impl CPU {
             },
             0xEE => Instruction::Xor(n1 as u8),
             _ => panic!(
-                "DECODING: Unreconized byte {:#X} on pc {:#X}\n CPU STATE: {:?}",
-                byte, self.pc as u16, self
+                "DECODING: Unreconized byte {:#X} on pc {:#X}\n MEM STATE: {:?} \nCPU STATE: {:?}",
+                byte, self.pc as u16, mmu, self
             ),
         }
     }
@@ -346,8 +345,8 @@ impl CPU {
                 }
             }
             _ => panic!(
-                "EXECUTING: Unreconized instruction {:?} on pc {:#X}\n CPU STATE: {:?}",
-                instruction, self.pc, self
+                "EXECUTING: Unreconized instruction {:?} on pc {:#X}\n MEM STATE: {:?} \nCPU STATE: {:?}",
+                instruction, self.pc as u16, mmu, self
             ),
         }
     }
