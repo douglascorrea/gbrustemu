@@ -14,6 +14,8 @@ pub struct CPU {
     l: u8,
     pc: u16,
     sp: u16,
+    t: usize,
+    m: usize,
     debug: bool,
 }
 
@@ -52,37 +54,36 @@ impl CPU {
             l: 0,
             pc: 0,
             sp: 0,
+            t: 0,
+            m: 0,
             debug: false,
         };
         cpu
     }
-    fn get_z_flag(&self) -> bool {
-        let only_z_on_f = self.f & 0b1000_0000;
-        let z_flag: bool = (only_z_on_f >> 7) == 1;
-        z_flag
-    }
-    fn get_n_flag(&self) -> bool {
-        let only_n_on_f = self.f & 0b0100_0000;
-        let n_flag: bool = (only_n_on_f >> 7) == 1;
-        n_flag
-    }
-    fn get_h_flag(&self) -> bool {
-        let only_h_on_f = self.f & 0b0010_0000;
-        let h_flag: bool = (only_h_on_f >> 7) == 1;
-        h_flag
-    }
-    fn get_c_flag(&self) -> bool {
-        let only_c_on_f = self.f & 0b0001_0000;
-        let c_flag: bool = (only_c_on_f >> 7) == 1;
-        c_flag
-    }
 
-    fn set_debug_flag(&mut self) {
+    pub fn set_debug_flag(&mut self) {
         self.debug = true;
     }
-    fn reset_debug_flag(&mut self) {
+    pub fn reset_debug_flag(&mut self) {
         self.debug = false;
     }
+
+    fn get_flag(&self, bit_mask: u8) -> bool {
+        (self.f & bit_mask) != 0
+    }
+    fn get_z_flag(&self) -> bool {
+        self.get_flag(0b1000_0000)
+    }
+    fn get_n_flag(&self) -> bool {
+        self.get_flag(0b0100_0000)
+    }
+    fn get_h_flag(&self) -> bool {
+        self.get_flag(0b0010_0000)
+    }
+    fn get_c_flag(&self) -> bool {
+        self.get_flag(0b0001_0000)
+    }
+
     fn set_z_flag(&mut self) {
         self.f = self.f | 0b1000_0000;
     }
@@ -164,7 +165,39 @@ impl CPU {
             0xAD => Instruction::XorL,
             0xAE => Instruction::XorHl,
             0xCB => match cb_opcode {
-                0x7C => Instruction::BitbH(0b10000000),
+                0x40 => Instruction::BitbB(0b0000_0001),
+                0x41 => Instruction::BitbC(0b0000_0001),
+                0x42 => Instruction::BitbD(0b0000_0001),
+                0x43 => Instruction::BitbE(0b0000_0001),
+                0x44 => Instruction::BitbH(0b0000_0001),
+                0x45 => Instruction::BitbL(0b0000_0001),
+                0x46 => Instruction::BitbHL(0b0000_0001),
+                0x47 => Instruction::BitbA(0b0000_0001),
+                0x48 => Instruction::BitbB(0b0000_0010),
+                0x49 => Instruction::BitbC(0b0000_0010),
+                0x4A => Instruction::BitbD(0b0000_0010),
+                0x4B => Instruction::BitbE(0b0000_0010),
+                0x4C => Instruction::BitbH(0b0000_0010),
+                0x4D => Instruction::BitbL(0b0000_0010),
+                0x4E => Instruction::BitbHL(0b0000_0010),
+                0x4F => Instruction::BitbA(0b0000_0010),
+                0x50 => Instruction::BitbB(0b0000_0100),
+                0x51 => Instruction::BitbC(0b0000_0100),
+                0x52 => Instruction::BitbD(0b0000_0100),
+                0x53 => Instruction::BitbE(0b0000_0100),
+                0x54 => Instruction::BitbH(0b0000_0100),
+                0x55 => Instruction::BitbL(0b0000_0100),
+                0x56 => Instruction::BitbHL(0b0000_0100),
+                0x57 => Instruction::BitbA(0b0000_0100),
+                0x58 => Instruction::BitbB(0b0000_1000),
+                0x59 => Instruction::BitbC(0b0000_1000),
+                0x5A => Instruction::BitbD(0b0000_1000),
+                0x5B => Instruction::BitbE(0b0000_1000),
+                0x5C => Instruction::BitbH(0b0000_1000),
+                0x5D => Instruction::BitbL(0b0000_1000),
+                0x5E => Instruction::BitbHL(0b0000_1000),
+                0x5F => Instruction::BitbA(0b0000_1000),
+                0x7C => Instruction::BitbH(0b1000_0000),
                 _ => panic!(
                     "DECODING CB PREFIX: Unreconized cb_opcode {:#X} on pc {:#X}\n CPU STATE: {:?}",
                     cb_opcode, self.pc as u16, self
@@ -172,8 +205,8 @@ impl CPU {
             },
             0xEE => Instruction::Xor(n1 as u8),
             _ => panic!(
-                "DECODING: Unreconized byte {:#X} on pc {:#X}\n MEM STATE: {:?} \nCPU STATE: {:?}",
-                byte, self.pc as u16, mmu, self
+                "\nMMU STATE: {:?} \nCPU STATE: {:?}\nDECODING: Unreconized byte {:#X} on pc {:#X}",
+                mmu, self, byte, self.pc
             ),
         }
     }
@@ -188,17 +221,23 @@ impl CPU {
                 }
                 self.sp = *d16;
                 self.pc += 3;
-            }
+                self.t += 12;
+                self.m += 3;
+            },
             Instruction::LdBc(d16) => {
                 self.b = ((d16 & 0xFF00) >> 8) as u8;
                 self.c = (d16 & 0x00FF) as u8;
                 self.pc += 3;
-            }
+                self.t += 12;
+                self.m += 3;
+            },
             Instruction::LdDe(d16) => {
                 self.d = ((d16 & 0xFF00) >> 8) as u8;
                 self.e = (d16 & 0x00FF) as u8;
                 self.pc += 3;
-            }
+                self.t += 12;
+                self.m += 3;
+            },
             Instruction::LdHl(d16) => {
                 if self.debug {
                     println!(
@@ -212,7 +251,10 @@ impl CPU {
                     println!("LD HL after, H: {:#X}, L: {:#X}", self.h, self.l);
                 }
                 self.pc += 3;
-            }
+
+                self.t += 12;
+                self.m += 3;
+            },
             Instruction::LddHlA => {
                 if self.debug {
                     println!(
@@ -223,25 +265,19 @@ impl CPU {
                 let h16 = (self.h as u16) << 8;
                 let mut hl: u16 = h16 | (self.l as u16);
                 mmu.write_byte(hl, self.a);
-                if hl == 0 {
-                    //@TODO Check if this is right
-                    self.set_h_flag();
-                }
                 hl = hl.wrapping_sub(1);
                 self.h = ((hl & 0xFF00) >> 8) as u8;
                 self.l = (hl & 0x00FF) as u8;
                 self.pc += 1;
-                if hl == 0 {
-                    self.set_z_flag();
-                }
-                self.set_n_flag();
+                self.t += 8;
+                self.m += 2;
                 if self.debug {
                     println!(
                         "LD (HL-) A after, A: {:#X} H: {:#X}, L: {:#X}",
                         self.a, self.h, self.l
                     );
                 }
-            }
+            },
             Instruction::XorA => {
                 if self.debug {
                     println!("XorA, before A: {:#X}, Z: {:?}", self.a, self.get_z_flag());
@@ -254,22 +290,38 @@ impl CPU {
                     println!("XorA, after A: {:#X}, Z: {:?}", self.a, self.get_z_flag());
                 }
                 self.pc += 1;
-            }
+                self.t += 4;
+                self.m += 1;
+            },
             Instruction::BitbA(bit_mask) => {
                 let bit_test: u8 = self.a & *bit_mask;
                 self.do_bit_opcode(*bit_mask != bit_test);
-            }
+                self.t += 8;
+                self.m += 2;
+            },
             Instruction::BitbB(bit_mask) => {
                 let bit_test: u8 = self.b & *bit_mask;
                 self.do_bit_opcode(*bit_mask != bit_test);
-            }
+                self.t += 8;
+                self.m += 2;
+            },
             Instruction::BitbC(bit_mask) => {
                 let bit_test: u8 = self.c & *bit_mask;
                 self.do_bit_opcode(*bit_mask != bit_test);
-            }
+                self.t += 8;
+                self.m += 2;
+            },
+            Instruction::BitbD(bit_mask) => {
+                let bit_test: u8 = self.d & *bit_mask;
+                self.do_bit_opcode(*bit_mask != bit_test);
+                self.t += 8;
+                self.m += 2;
+            },
             Instruction::BitbE(bit_mask) => {
                 let bit_test: u8 = self.e & *bit_mask;
                 self.do_bit_opcode(*bit_mask != bit_test);
+                self.t += 8;
+                self.m += 2;
             }
             Instruction::BitbH(bit_mask) => {
                 if self.debug {
@@ -296,10 +348,14 @@ impl CPU {
                         self.get_c_flag()
                     );
                 }
+                self.t += 8;
+                self.m += 2;
             }
             Instruction::BitbL(bit_mask) => {
                 let bit_test: u8 = self.l & *bit_mask;
                 self.do_bit_opcode(*bit_mask != bit_test);
+                self.t += 8;
+                self.m += 2;
             }
             Instruction::JrNz(n) => {
                 self.pc = self.pc + 2;
@@ -313,6 +369,11 @@ impl CPU {
                 }
                 if !self.get_z_flag() {
                     self.pc = self.pc.wrapping_add(*n as u16);
+                    self.t += 12;
+                    self.m += 3;
+                } else {
+                    self.t += 8;
+                    self.m += 2;
                 }
                 if self.debug {
                     println!(
@@ -324,29 +385,41 @@ impl CPU {
                 }
             }
             Instruction::JrZ(n) => {
-                self.sp = self.pc;
                 self.pc = self.pc + 2;
                 if self.get_z_flag() {
                     self.pc = self.pc.wrapping_add(*n as u16);
+                    self.t += 12;
+                    self.m += 3;
+                } else {
+                    self.t += 8;
+                    self.m += 2;
                 }
             }
             Instruction::JrNc(n) => {
-                self.sp = self.pc;
                 self.pc = self.pc + 2;
                 if !self.get_c_flag() {
                     self.pc = self.pc.wrapping_add(*n as u16);
+                    self.t += 12;
+                    self.m += 3;
+                } else {
+                    self.t += 8;
+                    self.m += 2;
                 }
             }
             Instruction::JrC(n) => {
-                self.sp = self.pc;
                 self.pc = self.pc + 2;
                 if self.get_c_flag() {
                     self.pc = self.pc.wrapping_add(*n as u16);
+                    self.t += 12;
+                    self.m += 3;
+                } else {
+                    self.t += 8;
+                    self.m += 2;
                 }
             }
             _ => panic!(
-                "EXECUTING: Unreconized instruction {:?} on pc {:#X}\n MEM STATE: {:?} \nCPU STATE: {:?}",
-                instruction, self.pc as u16, mmu, self
+                "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
+                mmu, self, instruction, self.pc
             ),
         }
     }

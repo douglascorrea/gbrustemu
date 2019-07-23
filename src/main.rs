@@ -14,8 +14,9 @@ fn main() {
     mmu.from_rom_file(&rom_file);
 
     // run make CPU run instructions over ram
-    println!("MMU BEFORE: {:?}", mmu);
+    //    println!("MMU BEFORE: {:?}", mmu);
     let mut cpu = CPU::new();
+    //    cpu.set_debug_flag();
     loop {
         cpu.run_instruction(&mut mmu);
     }
