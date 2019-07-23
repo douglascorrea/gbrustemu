@@ -1,4 +1,5 @@
-use gbrustemu::{CPU, MMU};
+use gbrustemu::cpu::CPU;
+use gbrustemu::mmu::MMU;
 use std::fs::File;
 use std::io::Read;
 
