@@ -15,6 +15,7 @@ pub struct CPU {
     l: u8,
     pc: u16,
     sp: u16,
+    debug: bool,
 }
 
 impl fmt::Debug for CPU {
@@ -52,10 +53,10 @@ impl CPU {
             l: 0,
             pc: 0,
             sp: 0,
+            debug: false,
         };
         cpu
     }
-
     fn get_z_flag(&self) -> bool {
         let only_z_on_f = self.f & 0b1000_0000;
         let z_flag: bool = (only_z_on_f >> 7) == 1;
@@ -77,6 +78,12 @@ impl CPU {
         c_flag
     }
 
+    fn set_debug_flag(&mut self) {
+        self.debug = true;
+    }
+    fn reset_debug_flag(&mut self) {
+        self.debug = false;
+    }
     fn set_z_flag(&mut self) {
         self.f = self.f | 0b1000_0000;
     }
@@ -106,6 +113,8 @@ impl CPU {
     fn do_bit_opcode(&mut self, bit: bool) {
         if bit {
             self.set_z_flag();
+        } else {
+            self.reset_z_flag();
         }
         self.reset_n_flag();
         self.set_h_flag();
@@ -113,6 +122,9 @@ impl CPU {
     }
 
     fn decode(&mut self, byte: u8, mmu: &MMU) -> Instruction {
+        if self.debug {
+            println!("Decoding PC: {:#X}", self.pc);
+        }
         // prepare some special variables
         // the immediate 16 bit
         let n1 = mmu.read_byte(self.pc + 1) as u16;
@@ -153,7 +165,7 @@ impl CPU {
             0xAD => Instruction::XorL,
             0xAE => Instruction::XorHl,
             0xCB => match cb_opcode {
-                0x7C => Instruction::BitbH(0b01000000),
+                0x7C => Instruction::BitbH(0b10000000),
                 _ => panic!(
                     "DECODING CB PREFIX: Unreconized cb_opcode {:#X} on pc {:#X}\n CPU STATE: {:?}",
                     cb_opcode, self.pc as u16, self
@@ -167,8 +179,14 @@ impl CPU {
         }
     }
     fn execute(&mut self, instruction: &Instruction, mmu: &mut MMU) {
+        if self.debug {
+            println!("Executing PC: {:#X}", self.pc);
+        }
         match instruction {
             Instruction::LdSp(d16) => {
+                if self.debug {
+                    println!("LD SP, d16: {:#X}", d16);
+                }
                 self.sp = *d16;
                 self.pc += 3;
             }
@@ -183,11 +201,26 @@ impl CPU {
                 self.pc += 3;
             }
             Instruction::LdHl(d16) => {
+                if self.debug {
+                    println!(
+                        "LD HL before, d16: {:#X} H: {:#X}, L: {:#X}",
+                        d16, self.h, self.l
+                    );
+                }
                 self.h = ((d16 & 0xFF00) >> 8) as u8;
                 self.l = (d16 & 0x00FF) as u8;
+                if self.debug {
+                    println!("LD HL after, H: {:#X}, L: {:#X}", self.h, self.l);
+                }
                 self.pc += 3;
             }
             Instruction::LddHlA => {
+                if self.debug {
+                    println!(
+                        "LD (HL-) A before, A: {:#X} H: {:#X}, L: {:#X}",
+                        self.a, self.h, self.l
+                    );
+                }
                 let h16 = (self.h as u16) << 8;
                 let mut hl: u16 = h16 | (self.l as u16);
                 mmu.write_byte(hl, self.a);
@@ -203,11 +236,23 @@ impl CPU {
                     self.set_z_flag();
                 }
                 self.set_n_flag();
+                if self.debug {
+                    println!(
+                        "LD (HL-) A after, A: {:#X} H: {:#X}, L: {:#X}",
+                        self.a, self.h, self.l
+                    );
+                }
             }
             Instruction::XorA => {
+                if self.debug {
+                    println!("XorA, before A: {:#X}, Z: {:?}", self.a, self.get_z_flag());
+                }
                 self.a ^= self.a;
                 if self.a == 0 {
-                    self.f = 0b10000000;
+                    self.set_z_flag();
+                }
+                if self.debug {
+                    println!("XorA, after A: {:#X}, Z: {:?}", self.a, self.get_z_flag());
                 }
                 self.pc += 1;
             }
@@ -228,18 +273,55 @@ impl CPU {
                 self.do_bit_opcode(*bit_mask != bit_test);
             }
             Instruction::BitbH(bit_mask) => {
+                if self.debug {
+                    println!(
+                        "BIT n,H - before, b: {:b}, H: {:#X}, Z: {:?}, N: {:?}, H(bit): {:?}, C: {:?}",
+                        bit_mask,
+                        self.h,
+                        self.get_z_flag(),
+                        self.get_n_flag(),
+                        self.get_h_flag(),
+                        self.get_c_flag()
+                    );
+                }
                 let bit_test: u8 = self.h & *bit_mask;
                 self.do_bit_opcode(*bit_mask != bit_test);
+                if self.debug {
+                    println!(
+                        "BIT n,H - after, b: {:b}, H: {:#X}, Z: {:?}, N: {:?}, H(bit): {:?}, C: {:?}",
+                        bit_mask,
+                        self.h,
+                        self.get_z_flag(),
+                        self.get_n_flag(),
+                        self.get_h_flag(),
+                        self.get_c_flag()
+                    );
+                }
             }
             Instruction::BitbL(bit_mask) => {
                 let bit_test: u8 = self.l & *bit_mask;
                 self.do_bit_opcode(*bit_mask != bit_test);
             }
             Instruction::JrNz(n) => {
-                self.sp = self.pc;
                 self.pc = self.pc + 2;
+                if self.debug {
+                    println!(
+                        "JR NZ, n - before, n: {:#X}, Z: {:?}, PC: {:#X}",
+                        n,
+                        self.get_z_flag(),
+                        self.pc
+                    );
+                }
                 if !self.get_z_flag() {
                     self.pc = self.pc.wrapping_add(*n as u16);
+                }
+                if self.debug {
+                    println!(
+                        "JR NZ, n - before, n: {:#X}, Z: {:?}, PC: {:#X}",
+                        n,
+                        self.get_z_flag(),
+                        self.pc
+                    );
                 }
             }
             Instruction::JrZ(n) => {
