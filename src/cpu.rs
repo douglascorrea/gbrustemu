@@ -1,7 +1,6 @@
 use crate::instruction::Instruction;
 use crate::mmu::MMU;
 
-use crate::instruction::Instruction::IncA;
 use std::fmt;
 
 pub struct CPU {
@@ -111,6 +110,26 @@ impl CPU {
         self.f = self.f & 0b1110_1111;
     }
 
+    pub fn push_to_stack(&mut self, mmu: &mut MMU, addr: u16) {
+        // write the address being pushed to the current stack pointer
+        let addr_0: u8 = ((addr & 0xFF00) >> 8) as u8;
+        let addr_1: u8 = (addr & 0x00FF) as u8;
+        mmu.write_byte(self.sp, addr_1);
+        self.sp -= 1;
+        mmu.write_byte(self.sp, addr_0);
+        self.sp -= 1;
+    }
+
+    pub fn pop_from_stack(&mut self, mmu: &MMU) -> u16 {
+        self.sp += 1;
+        let addr_0 = mmu.read_byte(self.sp);
+        self.sp += 1;
+        let addr_1 = mmu.read_byte(self.sp);
+        let addr_016 = (addr_0 as u16) << 8;
+        let addr: u16 = addr_016 | (addr_1 as u16);
+        addr
+    }
+
     fn do_bit_opcode(&mut self, bit: bool) {
         if bit {
             self.set_z_flag();
@@ -158,9 +177,13 @@ impl CPU {
             0x4F => Instruction::LdCa,
             0x5F => Instruction::LdEa,
             0x6F => Instruction::LdLa,
+            0x1A => Instruction::LdADE,
+            0x0A => Instruction::LdABC,
             0x11 => Instruction::LdDe(d16),
             0x21 => Instruction::LdHl(d16),
             0x31 => Instruction::LdSp(d16),
+            0xE0 => Instruction::LdFf00U8a(n1 as u8),
+            0xF0 => Instruction::LdAFf00U8(n1 as u8),
             0xE2 => Instruction::LdFf00Ca,
             0x20 => Instruction::JrNz(n1 as i8),
             0x28 => Instruction::JrZ(n1 as i8),
@@ -182,6 +205,19 @@ impl CPU {
             0x1C => Instruction::IncE,
             0x24 => Instruction::IncH,
             0x2C => Instruction::IncL,
+            0xC4 => Instruction::CallNz(d16),
+            0xD4 => Instruction::CallNc(d16),
+            0xCC => Instruction::CallZ(d16),
+            0xDC => Instruction::CallC(d16),
+            0xCD => Instruction::Call(d16),
+            0xF5 => Instruction::PushAf,
+            0xC5 => Instruction::PushBc,
+            0xD5 => Instruction::PushDe,
+            0xE5 => Instruction::PushHl,
+            0xF1 => Instruction::PopAf,
+            0xC1 => Instruction::PopBc,
+            0xD1 => Instruction::PopDe,
+            0xE1 => Instruction::PopHl,
             0xCB => match cb_opcode {
                 0x40 => Instruction::BitbB(0b0000_0001),
                 0x41 => Instruction::BitbC(0b0000_0001),
@@ -216,9 +252,17 @@ impl CPU {
                 0x5E => Instruction::BitbHL(0b0000_1000),
                 0x5F => Instruction::BitbA(0b0000_1000),
                 0x7C => Instruction::BitbH(0b1000_0000),
+                0x17 => Instruction::RlA,
+                0x10 => Instruction::RlB,
+                0x11 => Instruction::RlC,
+                0x12 => Instruction::RlD,
+                0x13 => Instruction::RlE,
+                0x14 => Instruction::RlH,
+                0x15 => Instruction::RlL,
+                0x16 => Instruction::RlHl,
                 _ => panic!(
-                    "DECODING CB PREFIX: Unreconized cb_opcode {:#X} on pc {:#X}\n CPU STATE: {:?}",
-                    cb_opcode, self.pc as u16, self
+                    "DECODING CB PREFIX: Unreconized MMU STATE: {:?}\ncb_opcode {:#X} on pc {:#X}\n CPU STATE: {:?}",
+                    mmu, cb_opcode, self.pc as u16, self
                 ),
             },
             0xEE => Instruction::Xor(n1 as u8),
@@ -338,9 +382,85 @@ impl CPU {
                     println!("LD HL after, H: {:#X}, L: {:#X}", self.h, self.l);
                 }
                 self.pc += 3;
-
                 self.t += 12;
                 self.m += 3;
+            },
+            Instruction::LdAa => {
+                if self.debug { println!("LD A,A"); }
+                self.a = self.a;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::LdBa => {
+                if self.debug { println!("LD B,A"); }
+                self.a = self.b;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::LdCa => {
+                if self.debug { println!("LD C,A"); }
+                self.a = self.c;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            }
+            Instruction::LdDa => {
+                if self.debug { println!("LD D,A"); }
+                self.a = self.d;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::LdEa => {
+                if self.debug { println!("LD E,A"); }
+                self.a = self.e;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::LdHa => {
+                if self.debug { println!("LD H,A"); }
+                self.a = self.h;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::LdLa => {
+                if self.debug { println!("LD L,A"); }
+                self.a = self.l;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::LdADE => {
+                if self.debug {
+                    println!(
+                        "LD,A,(DE) before, A: {:#X} D: {:#X}, E: {:#X}",
+                        self.a, self.d, self.e
+                    );
+                }
+                let d16 = (self.d as u16) << 8;
+                let de: u16 = d16 | (self.e as u16);
+                self.a = mmu.read_byte(d16);
+                self.pc += 1;
+                self.t += 8;
+                self.m += 2;
+            },
+            Instruction::LdHlA => {
+                if self.debug {
+                    println!(
+                        "LD (HL) A before, A: {:#X} H: {:#X}, L: {:#X}",
+                        self.a, self.h, self.l
+                    );
+                }
+                let h16 = (self.h as u16) << 8;
+                let hl: u16 = h16 | (self.l as u16);
+                mmu.write_byte(hl, self.a);
+                self.pc += 1;
+                self.t += 8;
+                self.m += 2;
             },
             Instruction::LddHlA => {
                 if self.debug {
@@ -364,6 +484,16 @@ impl CPU {
                         self.a, self.h, self.l
                     );
                 }
+            },
+            Instruction::LdFf00U8a(n) => {
+                if self.debug {
+                    println!("LD (FF00+u8) A n(u8): {:#X}", n);
+                }
+                let addr: u16 = 0xFF00 + *n as u16;
+                mmu.write_byte(addr, self.a);
+                self.pc += 2;
+                self.t += 12;
+                self.m += 3;
             },
             Instruction::LdFf00Ca => {
                 if self.debug {
@@ -566,9 +696,7 @@ impl CPU {
                 self.reset_n_flag();
             },
             Instruction::IncB => {
-                if self.debug {
-                    println!("INC B");
-                }
+                if self.debug { println!("INC B"); }
                 let was_less_than_15 = self.b < 15;
                 // 0b0000_XXXX
                 self.b = self.b.wrapping_add(1);
@@ -691,6 +819,96 @@ impl CPU {
                 }
                 self.reset_n_flag();
             },
+            Instruction::Call(d16) => {
+                if self.debug { println!("Call d16: {:#X}", d16); }
+                self.pc += 3;
+                self.push_to_stack(mmu, self.pc);
+                self.pc = *d16;
+                self.t += 24;
+                self.t += 6;
+            },
+            Instruction::PushAf => {
+                if self.debug { println!("Push AF"); }
+                let a16 = (self.a as u16) << 8;
+                let af: u16 = a16 | (self.f as u16);
+                self.push_to_stack(mmu, af);
+                self.pc += 1;
+                self.t += 16;
+                self.t += 4;
+            },
+            Instruction::PushBc => {
+                if self.debug { println!("Push BC"); }
+                let b16 = (self.b as u16) << 8;
+                let bc: u16 = b16 | (self.c as u16);
+                self.push_to_stack(mmu, bc);
+                self.pc += 1;
+                self.t += 16;
+                self.t += 4;
+            },
+            Instruction::PushDe => {
+                if self.debug { println!("Push DE"); }
+                let d16 = (self.d as u16) << 8;
+                let de: u16 = d16 | (self.e as u16);
+                self.push_to_stack(mmu, de);
+                self.pc += 1;
+                self.t += 16;
+                self.t += 4;
+            },
+            Instruction::PushHl => {
+                if self.debug { println!("Push HL"); }
+                let h16 = (self.h as u16) << 8;
+                let hl: u16 = h16 | (self.l as u16);
+                self.push_to_stack(mmu, hl);
+                self.pc += 1;
+                self.t += 16;
+                self.t += 4;
+            },
+            Instruction::PopAf => {
+                if self.debug { println!("Pop AF"); }
+                let addr: u16 = self.pop_from_stack(mmu);
+                self.a = ((addr & 0xFF00) >> 8) as u8;
+                self.f = (addr & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 12;
+                self.t += 3;
+            },
+            Instruction::PopDe => {
+                if self.debug { println!("Pop DE"); }
+                let addr: u16 = self.pop_from_stack(mmu);
+                self.d = ((addr & 0xFF00) >> 8) as u8;
+                self.e = (addr & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 12;
+                self.t += 3;
+            },
+            Instruction::PopHl => {
+                if self.debug { println!("Pop HL"); }
+                let addr: u16 = self.pop_from_stack(mmu);
+                self.h = ((addr & 0xFF00) >> 8) as u8;
+                self.l = (addr & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 12;
+                self.t += 3;
+            },
+            Instruction::PopBc => {
+                if self.debug { println!("Pop BC"); }
+                let addr: u16 = self.pop_from_stack(mmu);
+                self.b = ((addr & 0xFF00) >> 8) as u8;
+                self.c = (addr & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 12;
+                self.t += 3;
+            },
+//            Instruction::RlA => {
+//                if self.debug { println!("RL A"); }
+//
+//                //
+//
+//
+//                self.pc += 2;
+//                self.t += 8;
+//                self.t += 2;
+//            },
             _ => panic!(
                 "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
                 mmu, self, instruction, self.pc

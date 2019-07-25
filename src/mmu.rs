@@ -18,7 +18,7 @@ impl fmt::Debug for MMU {
 
 impl MMU {
     pub fn new() -> MMU {
-        let mut mem = MMU { ram: [0; 65536] };
+        let mut mem = MMU { ram: [0; 65_536] };
         mem
     }
 
