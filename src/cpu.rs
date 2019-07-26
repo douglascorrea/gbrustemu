@@ -140,6 +140,102 @@ impl CPU {
         self.set_h_flag();
         self.pc += 2;
     }
+    fn do_inc_d16(&mut self, register_value: u16) -> u16 {
+        // Checking the Half Carry bit
+        // @TODO Check if it his correct
+        let bit_mask = 0b0000_1111;
+        let lower_bits = register_value & bit_mask;
+        if bit_mask == lower_bits {
+            self.set_h_flag()
+        }
+
+        let new_register_value = register_value.wrapping_add(1);
+
+        self.pc += 1;
+        self.t += 4;
+        self.m += 1;
+        // set the flags
+        if new_register_value == 0 {
+            self.set_z_flag();
+        } else {
+            self.reset_z_flag();
+        }
+        self.reset_n_flag();
+        new_register_value
+    }
+
+    fn do_inc_n(&mut self, register_value: u8) -> u8 {
+        // Checking the Half Carry bit
+        let bit_mask = 0b0000_1111;
+        let lower_bits = register_value & bit_mask;
+        if bit_mask == lower_bits {
+            self.set_h_flag()
+        }
+
+        let new_register_value = register_value.wrapping_add(1);
+
+        self.pc += 1;
+        self.t += 4;
+        self.m += 1;
+        // set the flags
+        if new_register_value == 0 {
+            self.set_z_flag();
+        } else {
+            self.reset_z_flag();
+        }
+        self.reset_n_flag();
+        new_register_value
+    }
+
+    fn do_dec_n(&mut self, register_value: u8) -> u8 {
+        // Checking the Half Carry bit
+        // @TODO CHECK HOW HALF CARRY WORKS
+        // Need to understand better and test on half carry flag.
+        // BCD form?
+        // need to research
+        let bit_mask = 0b0001_0000;
+        if (bit_mask & register_value) != 0 {
+            self.set_h_flag()
+        }
+
+        let new_register_value = register_value.wrapping_sub(1);
+
+        self.pc += 1;
+        self.t += 4;
+        self.m += 1;
+        // set the flags
+        if new_register_value == 0 {
+            self.set_z_flag();
+        } else {
+            self.reset_z_flag();
+        }
+        self.reset_n_flag();
+        new_register_value
+    }
+
+    fn do_rl_n(&mut self, register_value: u8) -> u8 {
+        let c_flag: bool = (0b1000_0000 & register_value) != 0;
+        if c_flag {
+            self.set_c_flag();
+        } else {
+            self.reset_c_flag();
+        }
+        // actually rotating
+        let new_register_value = register_value << 1;
+        //handling flags
+        if new_register_value == 0 {
+            self.set_z_flag();
+        } else {
+            self.reset_z_flag();
+        }
+        self.reset_n_flag();
+        self.reset_h_flag();
+
+        self.pc += 2;
+        self.t += 8;
+        self.t += 2;
+        new_register_value
+    }
 
     fn decode(&mut self, byte: u8, mmu: &MMU) -> Instruction {
         if self.debug {
@@ -177,8 +273,14 @@ impl CPU {
             0x4F => Instruction::LdCa,
             0x5F => Instruction::LdEa,
             0x6F => Instruction::LdLa,
-            0x1A => Instruction::LdADE,
-            0x0A => Instruction::LdABC,
+            0x1A => Instruction::LdADe,
+            0x0A => Instruction::LdABc,
+            0x78 => Instruction::LdAb,
+            0x79 => Instruction::LdAc,
+            0x7A => Instruction::LdAd,
+            0x7B => Instruction::LdAe,
+            0x7C => Instruction::LdAh,
+            0x7D => Instruction::LdAl,
             0x11 => Instruction::LdDe(d16),
             0x21 => Instruction::LdHl(d16),
             0x31 => Instruction::LdSp(d16),
@@ -189,6 +291,7 @@ impl CPU {
             0x28 => Instruction::JrZ(n1 as i8),
             0x30 => Instruction::JrNc(n1 as i8),
             0x32 => Instruction::LddHlA,
+            0x22 => Instruction::LdiHlA,
             0x38 => Instruction::JrC(n1 as i8),
             0xAF => Instruction::XorA,
             0xA8 => Instruction::XorB,
@@ -205,11 +308,24 @@ impl CPU {
             0x1C => Instruction::IncE,
             0x24 => Instruction::IncH,
             0x2C => Instruction::IncL,
+            0x23 => Instruction::IncHlNoflags,
+            0x34 => Instruction::IncHl,
+            0x13 => Instruction::IncDe,
+            0x03 => Instruction::IncBc,
+            0x3D => Instruction::DecA,
+            0x05 => Instruction::DecB,
+            0x0D => Instruction::DecC,
+            0x15 => Instruction::DecD,
+            0x1D => Instruction::DecE,
+            0x25 => Instruction::DecH,
+            0x2D => Instruction::DecL,
+            0x35 => Instruction::DecHl,
             0xC4 => Instruction::CallNz(d16),
             0xD4 => Instruction::CallNc(d16),
             0xCC => Instruction::CallZ(d16),
             0xDC => Instruction::CallC(d16),
             0xCD => Instruction::Call(d16),
+            0xC9 => Instruction::Ret,
             0xF5 => Instruction::PushAf,
             0xC5 => Instruction::PushBc,
             0xD5 => Instruction::PushDe,
@@ -218,6 +334,7 @@ impl CPU {
             0xC1 => Instruction::PopBc,
             0xD1 => Instruction::PopDe,
             0xE1 => Instruction::PopHl,
+            0x17 => Instruction::RLA,
             0xCB => match cb_opcode {
                 0x40 => Instruction::BitbB(0b0000_0001),
                 0x41 => Instruction::BitbC(0b0000_0001),
@@ -272,6 +389,70 @@ impl CPU {
             ),
         }
     }
+
+    fn set_register(&mut self, register_name: &str, register_value: u8) {
+        match register_name {
+            "a" => {
+                self.a = register_value;
+            }
+            "b" => {
+                self.b = register_value;
+            }
+            "c" => {
+                self.c = register_value;
+            }
+            "d" => {
+                self.d = register_value;
+            }
+            "e" => {
+                self.e = register_value;
+            }
+            "f" => {
+                self.f = register_value;
+            }
+            "h" => {
+                self.h = register_value;
+            }
+            "l" => {
+                self.l = register_value;
+            }
+            _ => {
+                panic!(
+                    "set_register: Unrecognized register to set {:?}",
+                    &register_name
+                );
+            }
+        }
+    }
+    fn get_register(&self, register_name: &str) -> u8 {
+        match register_name {
+            "a" => self.a,
+            "b" => self.b,
+            "c" => self.c,
+            "d" => self.d,
+            "e" => self.e,
+            "f" => self.f,
+            "h" => self.h,
+            "l" => self.l,
+            _ => {
+                panic!(
+                    "set_register: Unrecognized register to set {:?}",
+                    &register_name
+                );
+            }
+        }
+    }
+
+    fn do_ld_reg_to_reg(&mut self, to: &str, from: &str) {
+        if self.debug {
+            println!("LD {:?} {:?}", to, from)
+        }
+        self.set_register(to, self.get_register(from));
+        self.pc += 1;
+        self.t += 4;
+        self.m += 1;
+    }
+
     fn execute(&mut self, instruction: &Instruction, mmu: &mut MMU) {
         if self.debug {
             println!("Executing PC: {:#X}", self.pc);
@@ -386,55 +567,27 @@ impl CPU {
                 self.m += 3;
             },
             Instruction::LdAa => {
-                if self.debug { println!("LD A,A"); }
-                self.a = self.a;
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                self.do_ld_reg_to_reg("a", "a");
             },
             Instruction::LdBa => {
-                if self.debug { println!("LD B,A"); }
-                self.a = self.b;
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                self.do_ld_reg_to_reg("b", "a");
             },
             Instruction::LdCa => {
-                if self.debug { println!("LD C,A"); }
-                self.a = self.c;
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                self.do_ld_reg_to_reg("c", "a");
             }
             Instruction::LdDa => {
-                if self.debug { println!("LD D,A"); }
-                self.a = self.d;
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                self.do_ld_reg_to_reg("d", "a");
             },
             Instruction::LdEa => {
-                if self.debug { println!("LD E,A"); }
-                self.a = self.e;
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                self.do_ld_reg_to_reg("e", "a");
             },
             Instruction::LdHa => {
-                if self.debug { println!("LD H,A"); }
-                self.a = self.h;
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                self.do_ld_reg_to_reg("h", "a");
             },
             Instruction::LdLa => {
-                if self.debug { println!("LD L,A"); }
-                self.a = self.l;
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                self.do_ld_reg_to_reg("l", "a");
             },
-            Instruction::LdADE => {
+            Instruction::LdADe => {
                 if self.debug {
                     println!(
                         "LD,A,(DE) before, A: {:#X} D: {:#X}, E: {:#X}",
@@ -447,6 +600,24 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
+            },
+            Instruction::LdAb => {
+                self.do_ld_reg_to_reg("a", "b");
+            },
+            Instruction::LdAc => {
+                self.do_ld_reg_to_reg("a", "c");
+            },
+            Instruction::LdAd => {
+                self.do_ld_reg_to_reg("a", "d");
+            },
+            Instruction::LdAe => {
+                self.do_ld_reg_to_reg("a", "e");
+            },
+            Instruction::LdAh => {
+                self.do_ld_reg_to_reg("a", "h");
+            },
+            Instruction::LdAl => {
+                self.do_ld_reg_to_reg("a", "l");
             },
             Instruction::LdHlA => {
                 if self.debug {
@@ -484,6 +655,18 @@ impl CPU {
                         self.a, self.h, self.l
                     );
                 }
+            },
+            Instruction::LdiHlA => {
+                if self.debug { println!("LD (HL+)"); }
+                let h16 = (self.h as u16) << 8;
+                let mut hl: u16 = h16 | (self.l as u16);
+                mmu.write_byte(hl, self.a);
+                hl = hl.wrapping_add(1);
+                self.h = ((hl & 0xFF00) >> 8) as u8;
+                self.l = (hl & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 8;
+                self.m += 2;
             },
             Instruction::LdFf00U8a(n) => {
                 if self.debug {
@@ -675,149 +858,101 @@ impl CPU {
                 }
             },
             Instruction::IncA => {
-                if self.debug {
-                    println!("INC A");
-                }
-                let was_less_than_15 = self.a < 15;
-                // 0b0000_XXXX
-                self.a = self.a.wrapping_add(1);
-                let is_bigger_than_15 = self.a > 15;
-                // 0b000X_XXXX
-                self.pc += 1;
-                self.t += 4;
-                self.t += 1;
-                // set the flags
-                if self.a == 0 {
-                    self.set_z_flag();
-                }
-                if was_less_than_15 && is_bigger_than_15 {
-                    self.set_h_flag()
-                }
-                self.reset_n_flag();
+                if self.debug { println!("INC A"); }
+                self.a = self.do_inc_n(self.a);
             },
             Instruction::IncB => {
                 if self.debug { println!("INC B"); }
-                let was_less_than_15 = self.b < 15;
-                // 0b0000_XXXX
-                self.b = self.b.wrapping_add(1);
-                let is_bigger_than_15 = self.b > 15;
-                // 0b000X_XXXX
-                self.pc += 1;
-                self.t += 4;
-                self.t += 1;
-                // set the flags
-                if self.b == 0 {
-                    self.set_z_flag();
-                }
-                if was_less_than_15 && is_bigger_than_15 {
-                    self.set_h_flag()
-                }
-                self.reset_n_flag();
+                self.b = self.do_inc_n(self.b);
             },
             Instruction::IncC => {
-                if self.debug {
-                    println!("INC C");
-                }
-                let was_less_than_15 = self.c < 15;
-                // 0b0000_XXXX
-                self.c = self.c.wrapping_add(1);
-                let is_bigger_than_15 = self.c > 15;
-                // 0b000X_XXXX
-                self.pc += 1;
-                self.t += 4;
-                self.t += 1;
-                // set the flags
-                if self.c == 0 {
-                    self.set_z_flag();
-                }
-                if was_less_than_15 && is_bigger_than_15 {
-                    self.set_h_flag()
-                }
-                self.reset_n_flag();
+                if self.debug { println!("INC C"); }
+                self.c = self.do_inc_n(self.c);
             },
             Instruction::IncD => {
-                if self.debug {
-                    println!("INC D");
-                }
-                let was_less_than_15 = self.d < 15;
-                // 0b0000_XXXX
-                self.d = self.d.wrapping_add(1);
-                let is_bigger_than_15 = self.d > 15;
-                // 0b000X_XXXX
-                self.pc += 1;
-                self.t += 4;
-                self.t += 1;
-                // set the flags
-                if self.d == 0 {
-                    self.set_z_flag();
-                }
-                if was_less_than_15 && is_bigger_than_15 {
-                    self.set_h_flag()
-                }
-                self.reset_n_flag();
-            },
+                if self.debug { println!("INC D"); }
+                self.d = self.do_inc_n(self.d);
+           },
             Instruction::IncE => {
-                if self.debug {
-                    println!("INC E");
-                }
-                let was_less_than_15 = self.e < 15;
-                // 0b0000_XXXX
-                self.e = self.e.wrapping_add(1);
-                let is_bigger_than_15 = self.e > 15;
-                // 0b000X_XXXX
-                self.pc += 1;
-                self.t += 4;
-                self.t += 1;
-                // set the flags
-                if self.e == 0 {
-                    self.set_z_flag();
-                }
-                if was_less_than_15 && is_bigger_than_15 {
-                    self.set_h_flag()
-                }
-                self.reset_n_flag();
+                if self.debug { println!("INC E") };
+                self.e = self.do_inc_n(self.e);
             },
             Instruction::IncH => {
-                if self.debug {
-                    println!("INC H");
-                }
-                let was_less_than_15 = self.h < 15;
-                // 0b0000_XXXX
-                self.h = self.h.wrapping_add(1);
-                let is_bigger_than_15 = self.h > 15;
-                // 0b000X_XXXX
-                self.pc += 1;
-                self.t += 4;
-                self.t += 1;
-                // set the flags
-                if self.h == 0 {
-                    self.set_z_flag();
-                }
-                if was_less_than_15 && is_bigger_than_15 {
-                    self.set_h_flag()
-                }
-                self.reset_n_flag();
+                if self.debug { println!("INC H") };
+                self.h = self.do_inc_n(self.h);
             },
             Instruction::IncL => {
-                if self.debug {
-                    println!("INC L");
-                }
-                let was_less_than_15 = self.l < 15;
-                // 0b0000_XXXX
-                self.l = self.l.wrapping_add(1);
-                let is_bigger_than_15 = self.l > 15;
-                // 0b000X_XXXX
+                if self.debug { println!("INC L") };
+                self.l = self.do_inc_n(self.l);
+            },
+            Instruction::IncHl => {
+                if self.debug { println!("INC (HL)") };
+                let h16 = (self.h as u16) << 8;
+                let mut hl: u16 = h16 | (self.l as u16);
+                hl = self.do_inc_d16(hl);
+                self.h = ((hl & 0xFF00) >> 8) as u8;
+                self.l = (hl & 0x00FF) as u8;
+            },
+            Instruction::IncHlNoflags => {
+                if self.debug { println!("INC HL") };
+                let h16 = (self.h as u16) << 8;
+                let mut hl: u16 = h16 | (self.l as u16);
+                hl = hl.wrapping_add(1);
+                self.h = ((hl & 0xFF00) >> 8) as u8;
+                self.l = (hl & 0x00FF) as u8;
                 self.pc += 1;
-                self.t += 4;
-                self.t += 1;
-                // set the flags
-                if self.l == 0 {
-                    self.set_z_flag();
-                }
-                if was_less_than_15 && is_bigger_than_15 {
-                    self.set_h_flag()
-                }
-                self.reset_n_flag();
+                self.t += 8;
+                self.m += 2;
+            },
+            Instruction::IncBc => {
+                if self.debug { println!("INC BC") };
+                let b16 = (self.b as u16) << 8;
+                let mut bc: u16 = b16 | (self.c as u16);
+                bc = bc.wrapping_add(1);
+                self.b = ((bc & 0xFF00) >> 8) as u8;
+                self.c = (bc & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 8;
+                self.m += 2;
+            },
+            Instruction::IncDe => {
+                if self.debug { println!("INC DE") };
+                let d16 = (self.d as u16) << 8;
+                let mut de: u16 = d16 | (self.e as u16);
+                de = de.wrapping_add(1);
+                self.d = ((de & 0xFF00) >> 8) as u8;
+                self.e = (de & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 8;
+                self.m += 2;
+            },
+            Instruction::DecA => {
+                if self.debug { println!("DEC A") };
+                self.a = self.do_dec_n(self.a);
+            },
+            Instruction::DecB => {
+                if self.debug { println!("DEC B") };
+                self.b = self.do_dec_n(self.b);
+            },
+            Instruction::DecC => {
+                if self.debug { println!("DEC C") };
+                self.c = self.do_dec_n(self.c);
+            },
+            Instruction::DecD => {
+                if self.debug { println!("DEC D") };
+                self.d = self.do_dec_n(self.d);
+            },
+            Instruction::DecE => {
+                if self.debug { println!("DEC E") };
+                self.e = self.do_dec_n(self.e);
+            },
+            Instruction::DecH => {
+                if self.debug { println!("DEC H") };
+                self.h = self.do_dec_n(self.h);
+            },
+            Instruction::DecL => {
+                if self.debug { println!("DEC L") };
+                self.l = self.do_dec_n(self.l);
             },
             Instruction::Call(d16) => {
                 if self.debug { println!("Call d16: {:#X}", d16); }
@@ -825,7 +960,13 @@ impl CPU {
                 self.push_to_stack(mmu, self.pc);
                 self.pc = *d16;
                 self.t += 24;
-                self.t += 6;
+                self.m += 6;
+            },
+            Instruction::Ret => {
+                if self.debug { println!("RET"); }
+                self.pc = self.pop_from_stack(mmu);
+                self.t += 16;
+                self.m += 4;
             },
             Instruction::PushAf => {
                 if self.debug { println!("Push AF"); }
@@ -834,7 +975,7 @@ impl CPU {
                 self.push_to_stack(mmu, af);
                 self.pc += 1;
                 self.t += 16;
-                self.t += 4;
+                self.m += 4;
             },
             Instruction::PushBc => {
                 if self.debug { println!("Push BC"); }
@@ -843,7 +984,7 @@ impl CPU {
                 self.push_to_stack(mmu, bc);
                 self.pc += 1;
                 self.t += 16;
-                self.t += 4;
+                self.m += 4;
             },
             Instruction::PushDe => {
                 if self.debug { println!("Push DE"); }
@@ -852,7 +993,7 @@ impl CPU {
                 self.push_to_stack(mmu, de);
                 self.pc += 1;
                 self.t += 16;
-                self.t += 4;
+                self.m += 4;
             },
             Instruction::PushHl => {
                 if self.debug { println!("Push HL"); }
@@ -861,7 +1002,7 @@ impl CPU {
                 self.push_to_stack(mmu, hl);
                 self.pc += 1;
                 self.t += 16;
-                self.t += 4;
+                self.m += 4;
             },
             Instruction::PopAf => {
                 if self.debug { println!("Pop AF"); }
@@ -870,7 +1011,7 @@ impl CPU {
                 self.f = (addr & 0x00FF) as u8;
                 self.pc += 1;
                 self.t += 12;
-                self.t += 3;
+                self.m += 3;
             },
             Instruction::PopDe => {
                 if self.debug { println!("Pop DE"); }
@@ -879,7 +1020,7 @@ impl CPU {
                 self.e = (addr & 0x00FF) as u8;
                 self.pc += 1;
                 self.t += 12;
-                self.t += 3;
+                self.m += 3;
             },
             Instruction::PopHl => {
                 if self.debug { println!("Pop HL"); }
@@ -888,7 +1029,7 @@ impl CPU {
                 self.l = (addr & 0x00FF) as u8;
                 self.pc += 1;
                 self.t += 12;
-                self.t += 3;
+                self.m += 3;
             },
             Instruction::PopBc => {
                 if self.debug { println!("Pop BC"); }
@@ -897,18 +1038,43 @@ impl CPU {
                 self.c = (addr & 0x00FF) as u8;
                 self.pc += 1;
                 self.t += 12;
-                self.t += 3;
+                self.m += 3;
             },
-//            Instruction::RlA => {
-//                if self.debug { println!("RL A"); }
-//
-//                //
-//
-//
-//                self.pc += 2;
-//                self.t += 8;
-//                self.t += 2;
-//            },
+            Instruction::RlA => {
+                if self.debug { println!("RL A"); }
+                self.a = self.do_rl_n(self.a);
+            },
+            Instruction::RlB => {
+                if self.debug { println!("RL B"); }
+                self.b = self.do_rl_n(self.b);
+            },
+            Instruction::RlC => {
+                if self.debug { println!("RL C"); }
+                self.c = self.do_rl_n(self.c);
+            },
+            Instruction::RlD => {
+                if self.debug { println!("RL D"); }
+                self.d = self.do_rl_n(self.d);
+            },
+            Instruction::RlE => {
+                if self.debug { println!("RL E"); }
+                self.e = self.do_rl_n(self.e);
+            },
+            Instruction::RlH => {
+                if self.debug { println!("RL H"); }
+                self.h = self.do_rl_n(self.h);
+            },
+            Instruction::RlL => {
+                if self.debug { println!("RL L"); }
+                self.l = self.do_rl_n(self.l);
+            },
+            Instruction::RLA => {
+                if self.debug { println!("RLA"); }
+                self.a = self.do_rl_n(self.a);
+                self.pc -= 1;
+                self.t -= 4;
+                self.m -= 1;
+            }
             _ => panic!(
                 "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
                 mmu, self, instruction, self.pc
