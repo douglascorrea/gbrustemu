@@ -140,13 +140,28 @@ impl CPU {
         self.set_h_flag();
         self.pc += 2;
     }
+    fn calc_half_carry_on_u16_sum(&self, value_a: u16, value_b: u16) -> bool {
+        ((value_a & 0xFFF) + (value_b & 0xFFF)) & 0x1000 == 0x1000
+    }
+
+    fn calc_half_carry_on_u16_sub(&self, value_a: u16, value_b: u16) -> bool {
+        (value_a & 0xFFF) < (value_b & 0xFFF)
+    }
+
+    fn calc_half_carry_on_u8_sum(&self, value_a: u8, value_b: u8) -> bool {
+        ((value_a & 0xF) + (value_b & 0xF)) & 0x10 == 0x10
+    }
+
+    fn calc_half_carry_on_u8_sub(&self, value_a: u8, value_b: u8) -> bool {
+        (value_a & 0xF) < (value_b & 0xF)
+    }
+
     fn do_inc_d16(&mut self, register_value: u16) -> u16 {
         // Checking the Half Carry bit
-        // @TODO Check if it his correct
-        let bit_mask = 0b0000_1111;
-        let lower_bits = register_value & bit_mask;
-        if bit_mask == lower_bits {
-            self.set_h_flag()
+        if self.calc_half_carry_on_u16_sum(register_value, 1) {
+            self.set_h_flag();
+        } else {
+            self.reset_h_flag();
         }
 
         let new_register_value = register_value.wrapping_add(1);
@@ -166,10 +181,10 @@ impl CPU {
 
     fn do_inc_n(&mut self, register_value: u8) -> u8 {
         // Checking the Half Carry bit
-        let bit_mask = 0b0000_1111;
-        let lower_bits = register_value & bit_mask;
-        if bit_mask == lower_bits {
-            self.set_h_flag()
+        if self.calc_half_carry_on_u8_sum(register_value, 1) {
+            self.set_h_flag();
+        } else {
+            self.reset_h_flag();
         }
 
         let new_register_value = register_value.wrapping_add(1);
@@ -189,13 +204,10 @@ impl CPU {
 
     fn do_dec_n(&mut self, register_value: u8) -> u8 {
         // Checking the Half Carry bit
-        // @TODO CHECK HOW HALF CARRY WORKS
-        // Need to understand better and test on half carry flag.
-        // BCD form?
-        // need to research
-        let bit_mask = 0b0001_0000;
-        if (bit_mask & register_value) != 0 {
-            self.set_h_flag()
+        if self.calc_half_carry_on_u8_sub(register_value, 1) {
+            self.reset_h_flag();
+        } else {
+            self.set_h_flag();
         }
 
         let new_register_value = register_value.wrapping_sub(1);
@@ -593,7 +605,7 @@ impl CPU {
                         "LD,A,(DE) before, A: {:#X} D: {:#X}, E: {:#X}",
                         self.a, self.d, self.e
                     );
-                }
+               }
                 let d16 = (self.d as u16) << 8;
                 let de: u16 = d16 | (self.e as u16);
                 self.a = mmu.read_byte(d16);
