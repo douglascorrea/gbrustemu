@@ -178,51 +178,55 @@ impl CPU {
         self.reset_n_flag();
         new_register_value
     }
-
-    fn do_inc_n(&mut self, register_value: u8) -> u8 {
+    fn do_sum(&mut self, register_value_a: u8, register_value_b: u8) -> u8 {
         // Checking the Half Carry bit
-        if self.calc_half_carry_on_u8_sum(register_value, 1) {
+        if self.calc_half_carry_on_u8_sum(register_value_a, register_value_b) {
             self.set_h_flag();
         } else {
             self.reset_h_flag();
         }
 
-        let new_register_value = register_value.wrapping_add(1);
+        let new_register_value_a = register_value_a.wrapping_add(register_value_b);
 
         self.pc += 1;
         self.t += 4;
         self.m += 1;
         // set the flags
-        if new_register_value == 0 {
+        if new_register_value_a == 0 {
             self.set_z_flag();
         } else {
             self.reset_z_flag();
         }
         self.reset_n_flag();
-        new_register_value
+        new_register_value_a
     }
-
-    fn do_dec_n(&mut self, register_value: u8) -> u8 {
+    fn do_inc_n(&mut self, register_value: u8) -> u8 {
+        self.do_sum(register_value, 1)
+    }
+    fn do_sub(&mut self, register_value_a: u8, register_value_b: u8) -> u8 {
         // Checking the Half Carry bit
-        if self.calc_half_carry_on_u8_sub(register_value, 1) {
+        if self.calc_half_carry_on_u8_sub(register_value_a, register_value_b) {
             self.reset_h_flag();
         } else {
             self.set_h_flag();
         }
 
-        let new_register_value = register_value.wrapping_sub(1);
+        let new_register_value_a = register_value_a.wrapping_sub(register_value_b);
 
         self.pc += 1;
         self.t += 4;
         self.m += 1;
         // set the flags
-        if new_register_value == 0 {
+        if new_register_value_a == 0 {
             self.set_z_flag();
         } else {
             self.reset_z_flag();
         }
         self.reset_n_flag();
-        new_register_value
+        new_register_value_a
+    }
+    fn do_dec_n(&mut self, register_value: u8) -> u8 {
+        self.do_sub(register_value, 1)
     }
 
     fn do_rl_n(&mut self, register_value: u8) -> u8 {
@@ -279,12 +283,13 @@ impl CPU {
             0x2E => Instruction::LdL(n1 as u8),
             0x7F => Instruction::LdAa,
             0x47 => Instruction::LdBa,
-            0x57 => Instruction::LdDa,
-            0x67 => Instruction::LdHa,
-            0x77 => Instruction::LdHlA,
             0x4F => Instruction::LdCa,
+            0x57 => Instruction::LdDa,
             0x5F => Instruction::LdEa,
+            0x67 => Instruction::LdHa,
             0x6F => Instruction::LdLa,
+            0x77 => Instruction::LdHlA,
+            0xEA => Instruction::LdXxA(d16),
             0x1A => Instruction::LdADe,
             0x0A => Instruction::LdABc,
             0x78 => Instruction::LdAb,
@@ -299,6 +304,7 @@ impl CPU {
             0xE0 => Instruction::LdFf00U8a(n1 as u8),
             0xF0 => Instruction::LdAFf00U8(n1 as u8),
             0xE2 => Instruction::LdFf00Ca,
+            0x18 => Instruction::Jr(n1 as i8),
             0x20 => Instruction::JrNz(n1 as i8),
             0x28 => Instruction::JrZ(n1 as i8),
             0x30 => Instruction::JrNc(n1 as i8),
@@ -347,6 +353,15 @@ impl CPU {
             0xD1 => Instruction::PopDe,
             0xE1 => Instruction::PopHl,
             0x17 => Instruction::RLA,
+            0xBF => Instruction::CpA,
+            0xB8 => Instruction::CpB,
+            0xB9 => Instruction::CpC,
+            0xBA => Instruction::CpD,
+            0xBB => Instruction::CpE,
+            0xBC => Instruction::CpH,
+            0xBD => Instruction::CpL,
+            0xBE => Instruction::CpHl,
+            0xFE => Instruction::Cp(n1 as u8),
             0xCB => match cb_opcode {
                 0x40 => Instruction::BitbB(0b0000_0001),
                 0x41 => Instruction::BitbC(0b0000_0001),
@@ -645,6 +660,13 @@ impl CPU {
                 self.t += 8;
                 self.m += 2;
             },
+            Instruction::LdXxA(d16) => {
+                if self.debug { println!("LD (XX),A xx: {:#X}", d16); }
+                mmu.write_byte(*d16, self.a);
+                self.pc += 3;
+                self.t += 16;
+                self.m += 4;
+            },
             Instruction::LddHlA => {
                 if self.debug {
                     println!(
@@ -686,6 +708,16 @@ impl CPU {
                 }
                 let addr: u16 = 0xFF00 + *n as u16;
                 mmu.write_byte(addr, self.a);
+                self.pc += 2;
+                self.t += 12;
+                self.m += 3;
+            },
+            Instruction::LdAFf00U8(n) => {
+                if self.debug {
+                    println!("LD A (FF00+u8) n(u8): {:#X}", n);
+                }
+                let addr: u16 = 0xFF00 + *n as u16;
+                self.a = mmu.read_byte(addr);
                 self.pc += 2;
                 self.t += 12;
                 self.m += 3;
@@ -869,6 +901,12 @@ impl CPU {
                     self.m += 2;
                 }
             },
+            Instruction::Jr(n) => {
+                if self.debug { println!("JR n: {:#X}", n); }
+                self.pc = self.pc + 2;
+                self.t += 12;
+                self.m += 3;
+            }
             Instruction::IncA => {
                 if self.debug { println!("INC A"); }
                 self.a = self.do_inc_n(self.a);
@@ -1086,7 +1124,53 @@ impl CPU {
                 self.pc -= 1;
                 self.t -= 4;
                 self.m -= 1;
-            }
+            },
+            Instruction::CpA => {
+                if self.debug { println!("CP A") };
+                let _ = self.do_sub(self.a, self.a);
+            },
+            Instruction::CpB => {
+                if self.debug { println!("CP B") };
+                let _ = self.do_sub(self.a, self.b);
+            },
+            Instruction::CpC => {
+                if self.debug { println!("CP C") };
+                let _ = self.do_sub(self.a, self.c);
+            },
+            Instruction::CpD => {
+                if self.debug { println!("CP D") };
+                let _ = self.do_sub(self.a, self.d);
+            },
+            Instruction::CpE => {
+                if self.debug { println!("CP E") };
+                let _ = self.do_sub(self.a, self.e);
+            },
+            Instruction::CpH => {
+                if self.debug { println!("CP H") };
+                let _ = self.do_sub(self.a, self.h);
+            },
+            Instruction::CpL => {
+                if self.debug { println!("CP L") };
+                let _ = self.do_sub(self.a, self.l);
+            },
+            Instruction::CpHl => {
+                if self.debug { println!("CP HL") };
+                let h16 = (self.h as u16) << 8;
+                let hl: u16 = h16 | (self.l as u16);
+                let _ = self.do_sub(self.a, mmu.read_byte(hl));
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::Cp(n) => {
+                if self.debug { println!("CP n: {:#X}", n) };
+                println!("MMU State: {:?}", mmu);
+                println!("Register A: {:b}", self.a);
+                let _ = self.do_sub(self.a, mmu.read_byte(*n as u16));
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
             _ => panic!(
                 "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
                 mmu, self, instruction, self.pc
