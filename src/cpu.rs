@@ -1,5 +1,6 @@
 use crate::instruction::Instruction;
 use crate::mmu::MMU;
+use crate::ppu::PPU;
 
 use std::fmt;
 
@@ -16,6 +17,8 @@ pub struct CPU {
     sp: u16,
     t: usize,
     m: usize,
+    last_t: usize,
+    last_m: usize,
     debug: bool,
 }
 
@@ -56,6 +59,8 @@ impl CPU {
             sp: 0,
             t: 0,
             m: 0,
+            last_t: 0,
+            last_m: 0,
             debug: false,
         };
         cpu
@@ -338,6 +343,15 @@ impl CPU {
             0x25 => Instruction::DecH,
             0x2D => Instruction::DecL,
             0x35 => Instruction::DecHl,
+            0x97 => Instruction::SubA,
+            0x90 => Instruction::SubB,
+            0x91 => Instruction::SubC,
+            0x92 => Instruction::SubD,
+            0x93 => Instruction::SubE,
+            0x94 => Instruction::SubH,
+            0x95 => Instruction::SubL,
+            0x96 => Instruction::SubHl,
+            0xD6 => Instruction::Sub(n1 as u8),
             0xC4 => Instruction::CallNz(d16),
             0xD4 => Instruction::CallNc(d16),
             0xCC => Instruction::CallZ(d16),
@@ -904,6 +918,7 @@ impl CPU {
             Instruction::Jr(n) => {
                 if self.debug { println!("JR n: {:#X}", n); }
                 self.pc = self.pc + 2;
+                self.pc = self.pc.wrapping_add(*n as u16);
                 self.t += 12;
                 self.m += 3;
             }
@@ -989,7 +1004,9 @@ impl CPU {
                 self.c = self.do_dec_n(self.c);
             },
             Instruction::DecD => {
-                if self.debug { println!("DEC D") };
+                if self.debug {
+                    println!("DEC D")
+                };
                 self.d = self.do_dec_n(self.d);
             },
             Instruction::DecE => {
@@ -1003,6 +1020,34 @@ impl CPU {
             Instruction::DecL => {
                 if self.debug { println!("DEC L") };
                 self.l = self.do_dec_n(self.l);
+            },
+            Instruction::SubA => {
+                if self.debug { println!("SUB A") };
+                self.a = self.do_sub(self.a, self.a);
+            },
+            Instruction::SubB => {
+                if self.debug { println!("SUB B") };
+                self.a = self.do_sub(self.a, self.b);
+            },
+            Instruction::SubC => {
+                if self.debug { println!("SUB C") };
+                self.a = self.do_sub(self.a, self.c);
+            },
+            Instruction::SubD => {
+                if self.debug { println!("SUB D") };
+                self.a = self.do_sub(self.a, self.d);
+            },
+            Instruction::SubE => {
+                if self.debug { println!("SUB E") };
+                self.a = self.do_sub(self.a, self.e);
+            },
+            Instruction::SubH => {
+                if self.debug { println!("SUB H") };
+                self.a = self.do_sub(self.a, self.h);
+            },
+            Instruction::SubL => {
+                if self.debug { println!("SUB L") };
+                self.a = self.do_sub(self.a, self.l);
             },
             Instruction::Call(d16) => {
                 if self.debug { println!("Call d16: {:#X}", d16); }
@@ -1164,12 +1209,14 @@ impl CPU {
             },
             Instruction::Cp(n) => {
                 if self.debug { println!("CP n: {:#X}", n) };
-                println!("MMU State: {:?}", mmu);
-                println!("Register A: {:b}", self.a);
-                let _ = self.do_sub(self.a, mmu.read_byte(*n as u16));
+                let _ = self.do_sub(self.a, *n);
                 self.pc += 1;
                 self.t += 4;
                 self.m += 1;
+//                if (*n == 0x90) {
+//                    println!("MMU state: {:?}", mmu);
+//                    println!("CPU state: {:?}", self);
+//                }
             },
             _ => panic!(
                 "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
@@ -1178,12 +1225,22 @@ impl CPU {
         }
     }
 
-    pub fn run_instruction(&mut self, mmu: &mut MMU) {
+    pub fn run_instruction(&mut self, mmu: &mut MMU, ppu: &mut PPU) {
+        self.last_m = self.m;
+        self.last_t = self.t;
         // fetch
         let byte = mmu.read_byte(self.pc);
         // decode
         let instruction = self.decode(byte, mmu);
         // execute
         self.execute(&instruction, mmu);
+
+        if self.pc == 0x00EF {
+            println!(
+                "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
+                mmu, self, instruction, self.pc)
+        }
+        let current_instruction_t_clocks_passed = self.t - self.last_t;
+        ppu.step(current_instruction_t_clocks_passed, mmu)
     }
 }

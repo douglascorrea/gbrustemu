@@ -1,5 +1,6 @@
 use gbrustemu::cpu::CPU;
 use gbrustemu::mmu::MMU;
+use gbrustemu::ppu::PPU;
 use std::fs::File;
 use std::io::Read;
 
@@ -16,8 +17,9 @@ fn main() {
     // run make CPU run instructions over ram
     //    println!("MMU BEFORE: {:?}", mmu);
     let mut cpu = CPU::new();
+    let mut ppu = PPU::new();
     //    cpu.set_debug_flag();
     loop {
-        cpu.run_instruction(&mut mmu);
+        cpu.run_instruction(&mut mmu, &mut ppu);
     }
 }
