@@ -1235,11 +1235,6 @@ impl CPU {
         // execute
         self.execute(&instruction, mmu);
 
-        if self.pc == 0x00EF {
-            println!(
-                "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
-                mmu, self, instruction, self.pc)
-        }
         let current_instruction_t_clocks_passed = self.t - self.last_t;
         ppu.step(current_instruction_t_clocks_passed, mmu)
     }
