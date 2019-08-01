@@ -46,7 +46,7 @@ impl fmt::Debug for CPU {
 
 impl CPU {
     pub fn new() -> CPU {
-        let mut cpu = CPU {
+        let cpu = CPU {
             a: 0,
             b: 0,
             c: 0,
@@ -235,6 +235,7 @@ impl CPU {
     }
 
     fn do_rl_n(&mut self, register_value: u8) -> u8 {
+        let old_c_flag = self.get_c_flag();
         let c_flag: bool = (0b1000_0000 & register_value) != 0;
         if c_flag {
             self.set_c_flag();
@@ -242,7 +243,11 @@ impl CPU {
             self.reset_c_flag();
         }
         // actually rotating
-        let new_register_value = register_value << 1;
+        let mut new_register_value = register_value << 1;
+        new_register_value = new_register_value & 0b1111_1110;
+        if old_c_flag {
+            new_register_value += 1;
+        }
         //handling flags
         if new_register_value == 0 {
             self.set_z_flag();
@@ -637,7 +642,7 @@ impl CPU {
                }
                 let d16 = (self.d as u16) << 8;
                 let de: u16 = d16 | (self.e as u16);
-                self.a = mmu.read_byte(d16);
+                self.a = mmu.read_byte(de);
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
@@ -1236,6 +1241,15 @@ impl CPU {
         self.execute(&instruction, mmu);
 
         let current_instruction_t_clocks_passed = self.t - self.last_t;
-        ppu.step(current_instruction_t_clocks_passed, mmu)
+        ppu.step(current_instruction_t_clocks_passed, mmu);
+        if self.pc == 0x00E8 {
+            let bg_tile_set = ppu.get_bg_tile_set(mmu);
+            let mut i = 0;
+            while i < bg_tile_set.len() {
+                println!("TILE: {:?}", ppu.get_tile(mmu, (0x8000 + i) as u16));
+                i += 16;
+            }
+            panic!("STOP");
+        }
     }
 }

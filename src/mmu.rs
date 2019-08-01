@@ -18,10 +18,10 @@ impl fmt::Debug for MMU {
              $FF48 - OBP0: {:b}, \n\
              $FF49 - OBP1: {:b}, \n\
              $FF4A - WY: {:#X}, \n\
-             $FF4B - WY: {:#X}, \n\
-             VRAM Tile Data - Block 1: {:?}\n\
-             VRAM Tile Data - Block 2: {:?}\n\
-             VRAM Tile Data - Block 3: {:?}\n",
+             $FF4B - WY: {:#X}, \n
+             BG Tile Data: {:?}\n\
+             BG Tile Map: {:?}\n\
+             ",
             &self.ram[0xFF40],
             &self.ram[0xFF41],
             &self.ram[0xFF42],
@@ -34,9 +34,8 @@ impl fmt::Debug for MMU {
             &self.ram[0xFF49],
             &self.ram[0xFF4A],
             &self.ram[0xFF4B],
-            &self.ram[0x8000..0x8800],
-            &self.ram[0x8800..0x9000],
-            &self.ram[0x9000..0x9800],
+            &self.ram[0x8000..0x9000],
+            &self.ram[0x9800..0x9C00],
             //            "VRAM: {:?}\n\nOAM RAM: {:?}\n\nIO RAM: {:?}\n\nH RAM: {:?}\n\n",
             //            &self.ram[0x8000..0xA001],
             //            &self.ram[0xFE00..0xFEA1],
@@ -48,8 +47,8 @@ impl fmt::Debug for MMU {
 
 impl MMU {
     pub fn new() -> MMU {
-        let mut mem = MMU { ram: [0; 65_536] };
-        mem
+        let mmu = MMU { ram: [0; 65_536] };
+        mmu
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
