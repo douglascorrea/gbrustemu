@@ -1242,14 +1242,17 @@ impl CPU {
 
         let current_instruction_t_clocks_passed = self.t - self.last_t;
         ppu.step(current_instruction_t_clocks_passed, mmu);
-        if self.pc == 0x00E8 {
-            let bg_tile_set = ppu.get_bg_tile_set(mmu);
-            let mut i = 0;
-            while i < bg_tile_set.len() {
-                println!("TILE: {:?}", ppu.get_tile(mmu, (0x8000 + i) as u16));
-                i += 16;
-            }
-            panic!("STOP");
-        }
+        //        if self.pc == 0x00E8 {
+        //            let bg_tile_set = ppu.get_bg_tile_set(mmu);
+        //            let mut i = 0;
+        //            //            while i < bg_tile_set.len() {
+        //            let tile = ppu.get_tile(mmu, 33168);
+        //            //                println!("TILE ADDR: {:?}", (0x8000 + i) as u16);
+        //            println!("TILE: {:?}", tile);
+        //            ppu.transform_tile_to_minifb_tile(&mmu, tile);
+        //            i += 16;
+        //            //            }
+        //            panic!("BGP Palette: {:b}", ppu.get_bgp(&mmu));
+        //        }
     }
 }
