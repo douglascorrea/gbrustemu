@@ -3,6 +3,11 @@ use crate::mmu::MMU;
 const WIDTH: usize = 256;
 const HEIGHT: usize = 256;
 
+pub const SCREEN_WIDTH: usize = 160;
+pub const SCREEN_HEIGHT: usize = 144;
+//pub const SCREEN_WIDTH: usize = 256;
+//pub const SCREEN_HEIGHT: usize = 256;
+
 pub const DARKEST_GREEN: u32 = 0xFF0F380F;
 pub const DARK_GREEN: u32 = 0xFF306230;
 pub const LIGHT_GREEN: u32 = 0xFF8BAC0F;
@@ -30,6 +35,14 @@ impl PPU {
 
     pub fn get_bgp(&self, mmu: &MMU) -> u8 {
         mmu.read_byte(0xFF47)
+    }
+
+    pub fn get_scy(&self, mmu: &MMU) -> u8 {
+        mmu.read_byte(0xFF42)
+    }
+
+    pub fn get_scx(&self, mmu: &MMU) -> u8 {
+        mmu.read_byte(0xFF43)
     }
 
     pub fn is_lcd_enable(&self, mmu: &MMU) -> bool {
@@ -63,6 +76,25 @@ impl PPU {
         tile
     }
 
+    pub fn transform_background_buffer_into_screen(&self, mmu: &MMU) -> Vec<u32> {
+        let scx = self.get_scx(mmu) as usize;
+        let scy = self.get_scy(mmu) as usize;
+        //        let scx = 0;
+        //        let scy = 20;
+
+        let mut viewport = vec![LIGHTEST_GREEN; SCREEN_WIDTH * SCREEN_HEIGHT];
+        let mut i = 0;
+        for (m, minifb_tile) in self.background_buffer.iter().enumerate() {
+            let line = m / WIDTH;
+            let column = m % WIDTH;
+            if line >= scy && line < (scy + 144) && column >= scx && column < (scx + 160) {
+                viewport[i] = *minifb_tile;
+                i += 1;
+            }
+        }
+        viewport
+    }
+
     pub fn populate_background_buffer(&mut self, mmu: &MMU) {
         // get the tile set
         let tile_set = self.get_tile_set(mmu);
@@ -70,11 +102,13 @@ impl PPU {
         let tile_map = self.get_tile_map(mmu);
         // populate the background_buffer accordingly to tile_map AND tranform tile to minifb tile
         // in the process
-        for (i, tile_map_item) in tile_map.iter().enumerate() {
+        for (t, tile_map_item) in tile_map.iter().enumerate() {
             let tile = tile_set[*tile_map_item as usize];
             let minifb_tile = self.transform_tile_to_minifb_tile(mmu, tile);
-            for (j, pixel) in minifb_tile.iter().enumerate() {
-                self.background_buffer[j + (i * 64) as usize] = *pixel;
+            for (i, pixel) in minifb_tile.iter().enumerate() {
+                let h_offset = (i % 8) + ((t % 32) * 8);
+                let v_offset = ((i / 8) + (t / 32) * 8) * WIDTH;
+                self.background_buffer[h_offset + v_offset] = *pixel;
             }
         }
     }
