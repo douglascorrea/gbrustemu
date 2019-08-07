@@ -34,13 +34,13 @@ fn main() {
     });
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        //    loop {
         cpu.run_instruction(&mut mmu, &mut ppu);
-        //        let now = Instant::now();
+        //    }
         if ppu.is_lcd_enable(&mmu) {
-            if mmu.dirty_viewport_flag || mmu.dirty_vram_flag {
-                let current_viewport = ppu.get_viewport();
-                window.update_with_buffer(current_viewport).unwrap();
-            }
+            ppu.populate_background_buffer(&mmu);
+            let current_viewport = ppu.transform_background_buffer_into_screen(&mmu);
+            window.update_with_buffer(&current_viewport).unwrap();
         }
         //        println!("{:?}", Instant::now().duration_since(now));
         //        println!("{:?}", ppu.get_scy(&mmu));

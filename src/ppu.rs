@@ -90,23 +90,26 @@ impl PPU {
         tile
     }
 
-    pub fn transform_background_buffer_into_screen(&mut self, mmu: &MMU) {
+    pub fn transform_background_buffer_into_screen(&self, mmu: &MMU) -> Vec<u32> {
         let scx = self.get_scx(mmu) as usize;
         let scy = self.get_scy(mmu) as usize;
+        if scy < 70 {
+            println!("scy {:?}", scy);
+        }
         //        let scx = 0;
-        //        let scy = 70;
+        //        let scy = 0;
 
-        self.viewport = self
-            .background_buffer
-            .iter()
-            .enumerate()
-            .filter(|(m, _)| {
-                let line = m / WIDTH;
-                let column = m % WIDTH;
-                line >= scy && line < (scy + 144) && column >= scx && column < (scx + 160)
-            })
-            .map(|(_, minifb_tile)| *minifb_tile)
-            .collect();
+        let mut viewport = vec![LIGHTEST_GREEN; SCREEN_WIDTH * SCREEN_HEIGHT];
+        let mut i = 0;
+        for (m, minifb_tile) in self.background_buffer.iter().enumerate() {
+            let line = m / WIDTH;
+            let column = m % WIDTH;
+            if line >= scy && line < (scy + 144) && column >= scx && column < (scx + 160) {
+                viewport[i] = *minifb_tile;
+                i += 1;
+            }
+        }
+        viewport
     }
 
     pub fn populate_background_buffer(&mut self, mmu: &MMU) {

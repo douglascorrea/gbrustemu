@@ -16,7 +16,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cpu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cpu.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mmu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/mmu.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ppu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ppu.rs" afterDir="false" />
     </list>
     <list id="445c8ac6-8e3c-41f8-ba24-79d2c6a2005a" name="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;" comment="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;&#10;&#10;This reverts commit 9843373f" />
@@ -140,7 +139,7 @@
       <workItem from="1565110910614" duration="730000" />
       <workItem from="1565112072615" duration="438000" />
       <workItem from="1565112535291" duration="9625000" />
-      <workItem from="1565126596993" duration="8845000" />
+      <workItem from="1565126596993" duration="10958000" />
     </task>
     <servers />
   </component>
@@ -170,6 +169,7 @@
     </option>
   </component>
   <component name="XDebuggerManager">
+<<<<<<< HEAD
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
@@ -179,12 +179,11 @@
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+=======
+>>>>>>> Working to solve the slowness
     <watches-manager>
       <configuration name="CargoCommandRunConfiguration">
-        <watch expression="(int)self.pc" language="Rust" />
-        <watch expression="(int) self.a" language="Rust" />
-        <watch expression="(int)*n" language="Rust" />
-        <watch expression="(int) self.f" language="Rust" />
+        <watch expression="(int)byte" language="Rust" />
       </configuration>
     </watches-manager>
   </component>
