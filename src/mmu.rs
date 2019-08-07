@@ -1,7 +1,10 @@
 use std::fmt;
+use std::fs::File;
+use std::io::Read;
 
 pub struct MMU {
     ram: [u8; 65_536], //0X0000 to 0xFFFF
+    boot_rom: [u8; 256],
 }
 impl fmt::Debug for MMU {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -47,7 +50,10 @@ impl fmt::Debug for MMU {
 
 impl MMU {
     pub fn new() -> MMU {
-        let mmu = MMU { ram: [0; 65_536] };
+        let mmu = MMU {
+            ram: [0; 65_536],
+            boot_rom: *include_bytes!("../ROMS/DMG_ROM.bin"),
+        };
         mmu
     }
 
@@ -56,7 +62,11 @@ impl MMU {
     }
 
     pub fn read_byte(&self, address: u16) -> u8 {
-        self.ram[address as usize]
+        if address < 0x00FF && self.ram[0xFF50] == 0 {
+            self.boot_rom[address as usize]
+        } else {
+            self.ram[address as usize]
+        }
     }
 
     pub fn from_rom_file(&mut self, rom_file: &[u8]) {

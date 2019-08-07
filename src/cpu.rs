@@ -1214,14 +1214,20 @@ impl CPU {
             },
             Instruction::Cp(n) => {
                 if self.debug { println!("CP n: {:#X}", n) };
+                let ly = mmu.read_byte(0xFF44);
+//                if ly > 143 {
+//                    println!("ly {:?}", ly);
+//                    println!("pc {:#X}", self.pc);
+//                    println!("a {:?}", self.a);
+//                    println!("n {:?}", *n);
+//                }
                 let _ = self.do_sub(self.a, *n);
+//                if ly > 139 {
+//                    println!("{:?}", self.get_z_flag());
+//                }
                 self.pc += 1;
                 self.t += 4;
                 self.m += 1;
-//                if (*n == 0x90) {
-//                    println!("MMU state: {:?}", mmu);
-//                    println!("CPU state: {:?}", self);
-//                }
             },
             _ => panic!(
                 "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",

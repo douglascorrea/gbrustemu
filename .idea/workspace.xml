@@ -13,9 +13,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="98a8971c-d45e-4aae-b0d2-4d7703e6b122" name="Default Changelist" comment="kkk">
-      <change beforePath="$PROJECT_DIR$/.idea/gbrustemu.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gbrustemu.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cpu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cpu.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mmu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/mmu.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ppu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ppu.rs" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -124,7 +125,7 @@
       <workItem from="1565110910614" duration="730000" />
       <workItem from="1565112072615" duration="438000" />
       <workItem from="1565112535291" duration="9625000" />
-      <workItem from="1565126596993" duration="3926000" />
+      <workItem from="1565126596993" duration="8845000" />
     </task>
     <servers />
   </component>
@@ -157,11 +158,24 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/ppu.rs</url>
-          <line>94</line>
-          <option name="timeStamp" value="6" />
+          <url>file://$PROJECT_DIR$/src/cpu.rs</url>
+          <line>1218</line>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/cpu.rs</url>
+          <line>851</line>
+          <option name="timeStamp" value="16" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="CargoCommandRunConfiguration">
+        <watch expression="(int)self.pc" language="Rust" />
+        <watch expression="(int) self.a" language="Rust" />
+        <watch expression="(int)*n" language="Rust" />
+        <watch expression="(int) self.f" language="Rust" />
+      </configuration>
+    </watches-manager>
   </component>
 </project>

@@ -77,10 +77,10 @@ impl PPU {
     }
 
     pub fn transform_background_buffer_into_screen(&self, mmu: &MMU) -> Vec<u32> {
-        let scx = self.get_scx(mmu) as usize;
-        let scy = self.get_scy(mmu) as usize;
-        //        let scx = 0;
-        //        let scy = 20;
+        //                let scx = self.get_scx(mmu) as usize;
+        //                let scy = self.get_scy(mmu) as usize;
+        let scx = 0;
+        let scy = 0;
 
         let mut viewport = vec![LIGHTEST_GREEN; SCREEN_WIDTH * SCREEN_HEIGHT];
         let mut i = 0;

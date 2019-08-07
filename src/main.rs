@@ -7,7 +7,7 @@ use std::io::Read;
 
 fn main() {
     //    Read the rom file
-    let mut f = File::open("ROMS/DMG_ROM.bin").unwrap();
+    let mut f = File::open("ROMS/tetris.gb").unwrap();
     let mut rom_file = Vec::<u8>::new();
     f.read_to_end(&mut rom_file).unwrap();
 
