@@ -1,14 +1,15 @@
+use crate::ppu::PPU;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
 
-pub struct MMU {
+pub struct MMU<'a> {
     ram: [u8; 65_536], //0X0000 to 0xFFFF
     boot_rom: [u8; 256],
     pub dirty_vram_flag: bool,
     pub dirty_viewport_flag: bool,
 }
-impl fmt::Debug for MMU {
+impl<'a> fmt::Debug for MMU<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -50,8 +51,8 @@ impl fmt::Debug for MMU {
     }
 }
 
-impl MMU {
-    pub fn new() -> MMU {
+impl<'a> MMU<'a> {
+    pub fn new(ppu: &'a PPU) -> MMU<'a> {
         let mmu = MMU {
             ram: [0; 65_536],
             boot_rom: *include_bytes!("../ROMS/DMG_ROM.bin"),
@@ -62,6 +63,12 @@ impl MMU {
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
+        if address >= 0x8000 && address < 0x9800 {
+            // I need to rasterize the tile being changeds
+            // start rasterizing the entire tileset and later refactor
+            // @TODO rasterize only the tile being changed
+            self.ppu.rasterize_entire_tile_set(&self);
+        }
         self.ram[address as usize] = value;
         if address >= 0x8000 && address < 0xA000 {
             self.dirty_vram_flag = true;

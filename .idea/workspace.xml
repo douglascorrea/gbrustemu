@@ -14,8 +14,8 @@
   <component name="ChangeListManager">
     <list default="true" id="98a8971c-d45e-4aae-b0d2-4d7703e6b122" name="Default Changelist" comment="kkk">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cpu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cpu.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mmu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/mmu.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ppu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ppu.rs" afterDir="false" />
     </list>
     <list id="445c8ac6-8e3c-41f8-ba24-79d2c6a2005a" name="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;" comment="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;&#10;&#10;This reverts commit 9843373f" />

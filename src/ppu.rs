@@ -93,9 +93,9 @@ impl PPU {
     pub fn transform_background_buffer_into_screen(&self, mmu: &MMU) -> Vec<u32> {
         let scx = self.get_scx(mmu) as usize;
         let scy = self.get_scy(mmu) as usize;
-        if scy < 70 {
-            println!("scy {:?}", scy);
-        }
+        //        if scy < 70 {
+        //            println!("scy {:?}", scy);
+        //        }
         //        let scx = 0;
         //        let scy = 0;
 
@@ -110,6 +110,16 @@ impl PPU {
             }
         }
         viewport
+    }
+
+    pub fn rasterize_entire_tile_set(&mut self, mmu: &MMU) {
+        for i in 0..8192 {
+            let tile = self.get_tile(mmu, 0x8000 + i);
+            let rasterized_tile = self.raster_tile(mmu, tile);
+            for (j, rasterized_pixel) in rasterized_tile.iter().enumerate() {
+                self.rasterized_tile_set[j as usize] = *rasterized_pixel;
+            }
+        }
     }
 
     pub fn populate_background_buffer(&mut self, mmu: &MMU) {
@@ -156,7 +166,7 @@ impl PPU {
         }
     }
 
-    pub fn transform_tile_to_minifb_tile(&self, mmu: &MMU, tile: [u8; 16]) -> Vec<u32> {
+    pub fn raster_tile(&self, mmu: &MMU, tile: [u8; 16]) -> Vec<u32> {
         let mut minifb_tile = vec![0; 64];
         for i in (0..tile.len()).step_by(2) {
             let pixel_part_1 = tile[i];
