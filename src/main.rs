@@ -14,7 +14,7 @@ fn main() {
 
     // put the rom file into the memory ram
     let mut ppu = PPU::new();
-    let mut mmu = MMU::new(&ppu);
+    let mut mmu = MMU::new();
     mmu.from_rom_file(&rom_file);
 
     // run make CPU run instructions over ram

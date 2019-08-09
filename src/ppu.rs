@@ -63,14 +63,8 @@ impl PPU {
         (self.get_lcdc(mmu) & 0b1000_0000) != 0
     }
 
-    pub fn get_tile_set(&self, mmu: &MMU) -> [[u8; 16]; 256] {
-        // @TODO check LCDC
-        let mut tile_set = [[0; 16]; 256];
-
-        for i in 0..256 {
-            tile_set[i] = self.get_tile(&mmu, (0x8000 + (i * 16)) as u16);
-        }
-        tile_set
+    pub fn get_tile_set(&self, mmu: &MMU) -> &Vec<u32> {
+        &self.rasterized_tile_set
     }
 
     pub fn get_tile_map(&self, mmu: &MMU) -> [u8; 1_024] {
@@ -123,16 +117,15 @@ impl PPU {
     }
 
     pub fn populate_background_buffer(&mut self, mmu: &MMU) {
-        // get the tile set
-        let tile_set = self.get_tile_set(mmu);
         // get the tile map
         let tile_map = self.get_tile_map(mmu);
         // populate the background_buffer accordingly to tile_map AND tranform tile to minifb tile
         // in the process
         for (t, tile_map_item) in tile_map.iter().enumerate() {
-            let tile = tile_set[*tile_map_item as usize];
-            let minifb_tile = self.transform_tile_to_minifb_tile(mmu, tile);
-            for (i, pixel) in minifb_tile.iter().enumerate() {
+            let rasterized_tile_set_index: usize = (*tile_map_item as usize - 0x8000) as usize;
+            let tile =
+                &self.rasterized_tile_set[rasterized_tile_set_index..rasterized_tile_set_index + 9];
+            for (i, pixel) in tile.iter().enumerate() {
                 let h_offset = (i % 8) + ((t % 32) * 8);
                 let v_offset = ((i / 8) + (t / 32) * 8) * WIDTH;
                 self.background_buffer[h_offset + v_offset] = *pixel;

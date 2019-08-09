@@ -3,13 +3,13 @@ use std::fmt;
 use std::fs::File;
 use std::io::Read;
 
-pub struct MMU<'a> {
+pub struct MMU {
     ram: [u8; 65_536], //0X0000 to 0xFFFF
     boot_rom: [u8; 256],
     pub dirty_vram_flag: bool,
     pub dirty_viewport_flag: bool,
 }
-impl<'a> fmt::Debug for MMU<'a> {
+impl fmt::Debug for MMU {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -51,8 +51,8 @@ impl<'a> fmt::Debug for MMU<'a> {
     }
 }
 
-impl<'a> MMU<'a> {
-    pub fn new(ppu: &'a PPU) -> MMU<'a> {
+impl MMU {
+    pub fn new() -> MMU {
         let mmu = MMU {
             ram: [0; 65_536],
             boot_rom: *include_bytes!("../ROMS/DMG_ROM.bin"),
@@ -63,11 +63,13 @@ impl<'a> MMU<'a> {
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
+        self.ram[address as usize] = value;
+        let ppu = &mut self.ppu;
         if address >= 0x8000 && address < 0x9800 {
             // I need to rasterize the tile being changeds
             // start rasterizing the entire tileset and later refactor
             // @TODO rasterize only the tile being changed
-            self.ppu.rasterize_entire_tile_set(&self);
+            ppu.rasterize_entire_tile_set(&self);
         }
         self.ram[address as usize] = value;
         if address >= 0x8000 && address < 0xA000 {
