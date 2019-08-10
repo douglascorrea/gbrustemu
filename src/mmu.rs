@@ -64,14 +64,6 @@ impl MMU {
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
         self.ram[address as usize] = value;
-        let ppu = &mut self.ppu;
-        if address >= 0x8000 && address < 0x9800 {
-            // I need to rasterize the tile being changeds
-            // start rasterizing the entire tileset and later refactor
-            // @TODO rasterize only the tile being changed
-            ppu.rasterize_entire_tile_set(&self);
-        }
-        self.ram[address as usize] = value;
         if address >= 0x8000 && address < 0xA000 {
             self.dirty_vram_flag = true;
         }

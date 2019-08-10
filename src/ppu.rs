@@ -106,16 +106,6 @@ impl PPU {
         viewport
     }
 
-    pub fn rasterize_entire_tile_set(&mut self, mmu: &MMU) {
-        for i in 0..8192 {
-            let tile = self.get_tile(mmu, 0x8000 + i);
-            let rasterized_tile = self.raster_tile(mmu, tile);
-            for (j, rasterized_pixel) in rasterized_tile.iter().enumerate() {
-                self.rasterized_tile_set[j as usize] = *rasterized_pixel;
-            }
-        }
-    }
-
     pub fn populate_background_buffer(&mut self, mmu: &MMU) {
         // get the tile map
         let tile_map = self.get_tile_map(mmu);
