@@ -4,6 +4,7 @@ use gbrustemu::ppu::{LIGHTEST_GREEN, PPU, SCREEN_HEIGHT, SCREEN_WIDTH};
 use minifb::{Key, Window, WindowOptions};
 use std::fs::File;
 use std::io::Read;
+use std::time::Instant;
 
 fn main() {
     //    Read the rom file
@@ -34,14 +35,15 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         cpu.run_instruction(&mut mmu, &mut ppu);
+        //        let now = Instant::now();
         if ppu.is_lcd_enable(&mmu) {
-            ppu.populate_background_buffer(&mmu);
-            let background_buffer = ppu.get_background_buffer();
-            let current_viewport = ppu.transform_background_buffer_into_screen(&mmu);
-            for (m, pixel) in current_viewport.iter().enumerate() {
-                screen[m] = *pixel;
+            if mmu.dirty_viewport_flag || mmu.dirty_vram_flag {
+                let current_viewport = ppu.get_viewport();
+                window.update_with_buffer(current_viewport).unwrap();
             }
-            window.update_with_buffer(&screen).unwrap();
         }
+        //        println!("{:?}", Instant::now().duration_since(now));
+        //        println!("{:?}", ppu.get_scy(&mmu));
+        //        println!("{:?}", ppu.get_ly(&mmu));
     }
 }

@@ -19,6 +19,7 @@
       <change beforePath="$PROJECT_DIR$/src/mmu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/mmu.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ppu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ppu.rs" afterDir="false" />
     </list>
+    <list id="445c8ac6-8e3c-41f8-ba24-79d2c6a2005a" name="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;" comment="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;&#10;&#10;This reverts commit 9843373f" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,6 +28,20 @@
   </component>
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="DatabaseView">
+    <option name="SHOW_INTERMEDIATE" value="true" />
+    <option name="GROUP_DATA_SOURCES" value="true" />
+    <option name="GROUP_SCHEMA" value="true" />
+    <option name="GROUP_CONTENTS" value="false" />
+    <option name="SORT_POSITIONED" value="false" />
+    <option name="SHOW_EMPTY_GROUPS" value="false" />
+    <option name="AUTO_SCROLL_FROM_SOURCE" value="false" />
+    <option name="HIDDEN_KINDS">
+      <set />
+    </option>
+    <expand />
+    <select />
   </component>
   <component name="FavoritesManager">
     <favorites_list name="gbrustemu" />
@@ -157,11 +172,6 @@
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/cpu.rs</url>
-          <line>1218</line>
-          <option name="timeStamp" value="15" />
-        </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/cpu.rs</url>
           <line>851</line>

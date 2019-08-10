@@ -17,6 +17,7 @@ pub struct PPU {
     mode: u8,
     mode_clock: usize,
     background_buffer: Vec<u32>,
+    viewport: Vec<u32>,
 }
 
 impl PPU {
@@ -25,6 +26,7 @@ impl PPU {
             mode: 0,
             background_buffer: vec![LIGHTEST_GREEN; WIDTH * HEIGHT],
             mode_clock: 0,
+            viewport: vec![LIGHTEST_GREEN; SCREEN_WIDTH * SCREEN_HEIGHT],
         };
         ppu
     }
@@ -43,6 +45,18 @@ impl PPU {
 
     pub fn get_scx(&self, mmu: &MMU) -> u8 {
         mmu.read_byte(0xFF43)
+    }
+
+    pub fn get_ly(&self, mmu: &MMU) -> u8 {
+        mmu.read_byte(0xFF44)
+    }
+
+    pub fn get_lyc(&self, mmu: &MMU) -> u8 {
+        mmu.read_byte(0xFF45)
+    }
+
+    pub fn get_viewport(&self) -> &Vec<u32> {
+        &self.viewport
     }
 
     pub fn is_lcd_enable(&self, mmu: &MMU) -> bool {
@@ -76,23 +90,23 @@ impl PPU {
         tile
     }
 
-    pub fn transform_background_buffer_into_screen(&self, mmu: &MMU) -> Vec<u32> {
-        //                let scx = self.get_scx(mmu) as usize;
-        //                let scy = self.get_scy(mmu) as usize;
-        let scx = 0;
-        let scy = 0;
+    pub fn transform_background_buffer_into_screen(&mut self, mmu: &MMU) {
+        let scx = self.get_scx(mmu) as usize;
+        let scy = self.get_scy(mmu) as usize;
+        //        let scx = 0;
+        //        let scy = 70;
 
-        let mut viewport = vec![LIGHTEST_GREEN; SCREEN_WIDTH * SCREEN_HEIGHT];
-        let mut i = 0;
-        for (m, minifb_tile) in self.background_buffer.iter().enumerate() {
-            let line = m / WIDTH;
-            let column = m % WIDTH;
-            if line >= scy && line < (scy + 144) && column >= scx && column < (scx + 160) {
-                viewport[i] = *minifb_tile;
-                i += 1;
-            }
-        }
-        viewport
+        self.viewport = self
+            .background_buffer
+            .iter()
+            .enumerate()
+            .filter(|(m, _)| {
+                let line = m / WIDTH;
+                let column = m % WIDTH;
+                line >= scy && line < (scy + 144) && column >= scx && column < (scx + 160)
+            })
+            .map(|(_, minifb_tile)| *minifb_tile)
+            .collect();
     }
 
     pub fn populate_background_buffer(&mut self, mmu: &MMU) {
@@ -204,6 +218,18 @@ impl PPU {
             current_stat = current_stat | stat_bit_0_to_2;
             // set STAT register
             mmu.write_byte(0xFF41, current_stat);
+            //            println!("{:?}", self.get_scy(mmu));
+            if self.mode == 2 {
+                if mmu.dirty_vram_flag {
+                    self.populate_background_buffer(mmu);
+                    self.transform_background_buffer_into_screen(mmu);
+                    mmu.dirty_vram_flag = false;
+                }
+                if mmu.dirty_viewport_flag {
+                    self.transform_background_buffer_into_screen(mmu);
+                    mmu.dirty_viewport_flag = false;
+                }
+            }
         }
     }
 }
