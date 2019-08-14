@@ -15,9 +15,8 @@
     <list default="true" id="98a8971c-d45e-4aae-b0d2-4d7703e6b122" name="Default Changelist" comment="kkk">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cpu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cpu.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/instruction.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/instruction.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mmu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/mmu.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ppu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ppu.rs" afterDir="false" />
     </list>
     <list id="445c8ac6-8e3c-41f8-ba24-79d2c6a2005a" name="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;" comment="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;&#10;&#10;This reverts commit 9843373f" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -69,7 +68,7 @@
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="C:/cmder/vendor/git-for-windows/bin/git.exe" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -83,7 +82,12 @@
     <property name="org.rust.hideDetachedFileNotificationsC:/Users/douglas/Sites/gbrustemu/src/cpu.rs" value="true" />
     <property name="org.rust.hideDetachedFileNotificationsC:/Users/douglas/Sites/gbrustemu/src/instructions.rs" value="true" />
     <property name="org.rust.hideDetachedFileNotificationsC:/Users/douglas/Sites/gbrustemu/src/mmu.rs" value="true" />
-    <property name="settings.editor.selected.configurable" value="CPPToolchains" />
+    <property name="settings.editor.selected.configurable" value="preferences.keymap" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\douglas\Sites\gbrustemu" />
+    </key>
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -141,6 +145,10 @@
       <workItem from="1565112072615" duration="438000" />
       <workItem from="1565112535291" duration="9625000" />
       <workItem from="1565126596993" duration="8845000" />
+      <workItem from="1565734978483" duration="49000" />
+      <workItem from="1565735073841" duration="1638000" />
+      <workItem from="1565741551804" duration="4078000" />
+      <workItem from="1565745654895" duration="1063000" />
     </task>
     <servers />
   </component>
@@ -174,18 +182,10 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/cpu.rs</url>
-          <line>851</line>
-          <option name="timeStamp" value="16" />
+          <line>443</line>
+          <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="CargoCommandRunConfiguration">
-        <watch expression="(int)self.pc" language="Rust" />
-        <watch expression="(int) self.a" language="Rust" />
-        <watch expression="(int)*n" language="Rust" />
-        <watch expression="(int) self.f" language="Rust" />
-      </configuration>
-    </watches-manager>
   </component>
 </project>

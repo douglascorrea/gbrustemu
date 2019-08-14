@@ -20,7 +20,7 @@ fn main() {
     //    println!("MMU BEFORE: {:?}", mmu);
     let mut cpu = CPU::new();
     let mut ppu = PPU::new();
-    //    cpu.set_debug_flag();
+    //        cpu.set_debug_flag();
 
     let mut screen = vec![LIGHTEST_GREEN; SCREEN_WIDTH * SCREEN_HEIGHT];
     let mut window = Window::new(

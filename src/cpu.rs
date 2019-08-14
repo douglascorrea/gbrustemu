@@ -183,7 +183,7 @@ impl CPU {
         self.reset_n_flag();
         new_register_value
     }
-    fn do_sum(&mut self, register_value_a: u8, register_value_b: u8) -> u8 {
+    fn do_add(&mut self, register_value_a: u8, register_value_b: u8) -> u8 {
         // Checking the Half Carry bit
         if self.calc_half_carry_on_u8_sum(register_value_a, register_value_b) {
             self.set_h_flag();
@@ -206,7 +206,7 @@ impl CPU {
         new_register_value_a
     }
     fn do_inc_n(&mut self, register_value: u8) -> u8 {
-        self.do_sum(register_value, 1)
+        self.do_add(register_value, 1)
     }
     fn do_sub(&mut self, register_value_a: u8, register_value_b: u8) -> u8 {
         // Checking the Half Carry bit
@@ -283,6 +283,7 @@ impl CPU {
         let cb_d16: u16 = (cb_n2 << 8) | cb_n1;
 
         match byte {
+            0x00 => Instruction::Nop,
             0x01 => Instruction::LdBc(d16),
             0x3E => Instruction::LdA(n1 as u8),
             0x06 => Instruction::LdB(n1 as u8),
@@ -318,6 +319,7 @@ impl CPU {
             0x20 => Instruction::JrNz(n1 as i8),
             0x28 => Instruction::JrZ(n1 as i8),
             0x30 => Instruction::JrNc(n1 as i8),
+            0xC3 => Instruction::Jp(d16),
             0x32 => Instruction::LddHlA,
             0x22 => Instruction::LdiHlA,
             0x38 => Instruction::JrC(n1 as i8),
@@ -357,6 +359,16 @@ impl CPU {
             0x95 => Instruction::SubL,
             0x96 => Instruction::SubHl,
             0xD6 => Instruction::Sub(n1 as u8),
+            0x87 => Instruction::AddAa,
+            0x80 => Instruction::AddAb,
+            0x81 => Instruction::AddAc,
+            0x81 => Instruction::AddAc,
+            0x82 => Instruction::AddAd,
+            0x83 => Instruction::AddAe,
+            0x84 => Instruction::AddAh,
+            0x85 => Instruction::AddAl,
+            0x86 => Instruction::AddAhl,
+            0xC6 => Instruction::AddA(n1 as u8),
             0xC4 => Instruction::CallNz(d16),
             0xD4 => Instruction::CallNc(d16),
             0xCC => Instruction::CallZ(d16),
@@ -504,6 +516,11 @@ impl CPU {
             println!("Executing PC: {:#X}", self.pc);
         }
         match instruction {
+            Instruction::Nop => {
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
             Instruction::LdA(n) => {
                 if self.debug {
                     println!("LD A, n: {:#X}", n);
@@ -512,7 +529,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdB(n) => {
                 if self.debug {
                     println!("LD B, n: {:#X}", n);
@@ -521,7 +538,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdC(n) => {
                 if self.debug {
                     println!("LD C, n: {:#X}", n);
@@ -530,7 +547,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdD(n) => {
                 if self.debug {
                     println!("LD D, n: {:#X}", n);
@@ -539,7 +556,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdE(n) => {
                 if self.debug {
                     println!("LD E, n: {:#X}", n);
@@ -548,7 +565,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdH(n) => {
                 if self.debug {
                     println!("LD H, n: {:#X}", n);
@@ -557,7 +574,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdL(n) => {
                 if self.debug {
                     println!("LD L, n: {:#X}", n);
@@ -566,7 +583,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdSp(d16) => {
                 if self.debug {
                     println!("LD SP, d16: {:#X}", d16);
@@ -575,7 +592,7 @@ impl CPU {
                 self.pc += 3;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::LdBc(d16) => {
                 if self.debug {
                     println!("LD BC, d16: {:#X}", d16);
@@ -585,7 +602,7 @@ impl CPU {
                 self.pc += 3;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::LdDe(d16) => {
                 if self.debug {
                     println!("LD DE, d16: {:#X}", d16);
@@ -595,7 +612,7 @@ impl CPU {
                 self.pc += 3;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::LdHl(d16) => {
                 if self.debug {
                     println!(
@@ -611,60 +628,60 @@ impl CPU {
                 self.pc += 3;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::LdAa => {
                 self.do_ld_reg_to_reg("a", "a");
-            },
+            }
             Instruction::LdBa => {
                 self.do_ld_reg_to_reg("b", "a");
-            },
+            }
             Instruction::LdCa => {
                 self.do_ld_reg_to_reg("c", "a");
             }
             Instruction::LdDa => {
                 self.do_ld_reg_to_reg("d", "a");
-            },
+            }
             Instruction::LdEa => {
                 self.do_ld_reg_to_reg("e", "a");
-            },
+            }
             Instruction::LdHa => {
                 self.do_ld_reg_to_reg("h", "a");
-            },
+            }
             Instruction::LdLa => {
                 self.do_ld_reg_to_reg("l", "a");
-            },
+            }
             Instruction::LdADe => {
                 if self.debug {
                     println!(
                         "LD,A,(DE) before, A: {:#X} D: {:#X}, E: {:#X}",
                         self.a, self.d, self.e
                     );
-               }
+                }
                 let d16 = (self.d as u16) << 8;
                 let de: u16 = d16 | (self.e as u16);
                 self.a = mmu.read_byte(de);
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdAb => {
                 self.do_ld_reg_to_reg("a", "b");
-            },
+            }
             Instruction::LdAc => {
                 self.do_ld_reg_to_reg("a", "c");
-            },
+            }
             Instruction::LdAd => {
                 self.do_ld_reg_to_reg("a", "d");
-            },
+            }
             Instruction::LdAe => {
                 self.do_ld_reg_to_reg("a", "e");
-            },
+            }
             Instruction::LdAh => {
                 self.do_ld_reg_to_reg("a", "h");
-            },
+            }
             Instruction::LdAl => {
                 self.do_ld_reg_to_reg("a", "l");
-            },
+            }
             Instruction::LdHlA => {
                 if self.debug {
                     println!(
@@ -678,14 +695,14 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdXxA(d16) => {
                 if self.debug { println!("LD (XX),A xx: {:#X}", d16); }
                 mmu.write_byte(*d16, self.a);
                 self.pc += 3;
                 self.t += 16;
                 self.m += 4;
-            },
+            }
             Instruction::LddHlA => {
                 if self.debug {
                     println!(
@@ -708,7 +725,7 @@ impl CPU {
                         self.a, self.h, self.l
                     );
                 }
-            },
+            }
             Instruction::LdiHlA => {
                 if self.debug { println!("LD (HL+)"); }
                 let h16 = (self.h as u16) << 8;
@@ -720,7 +737,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::LdFf00U8a(n) => {
                 if self.debug {
                     println!("LD (FF00+u8) A n(u8): {:#X}", n);
@@ -730,7 +747,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::LdAFf00U8(n) => {
                 if self.debug {
                     println!("LD A (FF00+u8) n(u8): {:#X}", n);
@@ -740,7 +757,7 @@ impl CPU {
                 self.pc += 2;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::LdFf00Ca => {
                 if self.debug {
                     println!("LD (C) A");
@@ -750,7 +767,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::XorA => {
                 if self.debug {
                     println!("XorA, before A: {:#X}, Z: {:?}", self.a, self.get_z_flag());
@@ -765,7 +782,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 4;
                 self.m += 1;
-            },
+            }
             Instruction::BitbA(bit_mask) => {
                 if self.debug {
                     println!("Bit b,A b: {:b}", bit_mask);
@@ -774,7 +791,7 @@ impl CPU {
                 self.do_bit_opcode(*bit_mask != bit_test);
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::BitbB(bit_mask) => {
                 if self.debug {
                     println!("Bit b,B b: {:b}", bit_mask);
@@ -783,7 +800,7 @@ impl CPU {
                 self.do_bit_opcode(*bit_mask != bit_test);
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::BitbC(bit_mask) => {
                 if self.debug {
                     println!("Bit b,C b: {:b}", bit_mask);
@@ -792,7 +809,7 @@ impl CPU {
                 self.do_bit_opcode(*bit_mask != bit_test);
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::BitbD(bit_mask) => {
                 if self.debug {
                     println!("Bit b,D b: {:b}", bit_mask);
@@ -801,7 +818,7 @@ impl CPU {
                 self.do_bit_opcode(*bit_mask != bit_test);
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::BitbE(bit_mask) => {
                 if self.debug {
                     println!("Bit b,E b: {:b}", bit_mask);
@@ -919,7 +936,7 @@ impl CPU {
                     self.t += 8;
                     self.m += 2;
                 }
-            },
+            }
             Instruction::Jr(n) => {
                 if self.debug { println!("JR n: {:#X}", n); }
                 self.pc = self.pc + 2;
@@ -927,34 +944,40 @@ impl CPU {
                 self.t += 12;
                 self.m += 3;
             }
+            Instruction::Jp(d16) => {
+                if self.debug { println!("JP nn: {:#X}", d16); }
+                self.pc = *d16;
+                self.t += 16;
+                self.m += 4;
+            }
             Instruction::IncA => {
                 if self.debug { println!("INC A"); }
                 self.a = self.do_inc_n(self.a);
-            },
+            }
             Instruction::IncB => {
                 if self.debug { println!("INC B"); }
                 self.b = self.do_inc_n(self.b);
-            },
+            }
             Instruction::IncC => {
                 if self.debug { println!("INC C"); }
                 self.c = self.do_inc_n(self.c);
-            },
+            }
             Instruction::IncD => {
                 if self.debug { println!("INC D"); }
                 self.d = self.do_inc_n(self.d);
-           },
+            }
             Instruction::IncE => {
                 if self.debug { println!("INC E") };
                 self.e = self.do_inc_n(self.e);
-            },
+            }
             Instruction::IncH => {
                 if self.debug { println!("INC H") };
                 self.h = self.do_inc_n(self.h);
-            },
+            }
             Instruction::IncL => {
                 if self.debug { println!("INC L") };
                 self.l = self.do_inc_n(self.l);
-            },
+            }
             Instruction::IncHl => {
                 if self.debug { println!("INC (HL)") };
                 let h16 = (self.h as u16) << 8;
@@ -962,7 +985,7 @@ impl CPU {
                 hl = self.do_inc_d16(hl);
                 self.h = ((hl & 0xFF00) >> 8) as u8;
                 self.l = (hl & 0x00FF) as u8;
-            },
+            }
             Instruction::IncHlNoflags => {
                 if self.debug { println!("INC HL") };
                 let h16 = (self.h as u16) << 8;
@@ -973,7 +996,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::IncBc => {
                 if self.debug { println!("INC BC") };
                 let b16 = (self.b as u16) << 8;
@@ -984,7 +1007,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::IncDe => {
                 if self.debug { println!("INC DE") };
                 let d16 = (self.d as u16) << 8;
@@ -995,65 +1018,100 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            },
+            }
             Instruction::DecA => {
                 if self.debug { println!("DEC A") };
                 self.a = self.do_dec_n(self.a);
-            },
+            }
             Instruction::DecB => {
                 if self.debug { println!("DEC B") };
                 self.b = self.do_dec_n(self.b);
-            },
+            }
             Instruction::DecC => {
                 if self.debug { println!("DEC C") };
                 self.c = self.do_dec_n(self.c);
-            },
+            }
             Instruction::DecD => {
                 if self.debug {
                     println!("DEC D")
                 };
                 self.d = self.do_dec_n(self.d);
-            },
+            }
             Instruction::DecE => {
                 if self.debug { println!("DEC E") };
                 self.e = self.do_dec_n(self.e);
-            },
+            }
             Instruction::DecH => {
                 if self.debug { println!("DEC H") };
                 self.h = self.do_dec_n(self.h);
-            },
+            }
             Instruction::DecL => {
                 if self.debug { println!("DEC L") };
                 self.l = self.do_dec_n(self.l);
-            },
+            }
             Instruction::SubA => {
                 if self.debug { println!("SUB A") };
                 self.a = self.do_sub(self.a, self.a);
-            },
+            }
             Instruction::SubB => {
                 if self.debug { println!("SUB B") };
                 self.a = self.do_sub(self.a, self.b);
-            },
+            }
             Instruction::SubC => {
                 if self.debug { println!("SUB C") };
                 self.a = self.do_sub(self.a, self.c);
-            },
+            }
             Instruction::SubD => {
                 if self.debug { println!("SUB D") };
                 self.a = self.do_sub(self.a, self.d);
-            },
+            }
             Instruction::SubE => {
                 if self.debug { println!("SUB E") };
                 self.a = self.do_sub(self.a, self.e);
-            },
+            }
             Instruction::SubH => {
                 if self.debug { println!("SUB H") };
                 self.a = self.do_sub(self.a, self.h);
-            },
+            }
             Instruction::SubL => {
                 if self.debug { println!("SUB L") };
                 self.a = self.do_sub(self.a, self.l);
-            },
+            }
+            Instruction::AddAa => {
+                if self.debug { println!("Add A, A") };
+                self.a = self.do_add(self.a, self.a);
+            }
+            Instruction::AddAb => {
+                if self.debug { println!("Add A, B") };
+                self.a = self.do_add(self.a, self.b);
+            }
+            Instruction::AddAc => {
+                if self.debug { println!("Add A, C") };
+                self.a = self.do_add(self.a, self.c);
+            }
+            Instruction::AddAd => {
+                if self.debug { println!("Add A, D") };
+                self.a = self.do_add(self.a, self.d);
+            }
+            Instruction::AddAe => {
+                if self.debug { println!("Add A, E") };
+                self.a = self.do_add(self.a, self.e);
+            }
+            Instruction::AddAh => {
+                if self.debug { println!("Add A, H") };
+                self.a = self.do_add(self.a, self.h);
+            }
+            Instruction::AddAl => {
+                if self.debug { println!("Add A, l") };
+                self.a = self.do_add(self.a, self.l);
+            }
+            Instruction::AddAhl => {
+                if self.debug { println!("Add A, HL") };
+                let h16 = (self.h as u16) << 8;
+                let hl: u16 = h16 | (self.l as u16);
+                self.a = self.do_add(self.a, mmu.read_byte(hl));
+            }
+
             Instruction::Call(d16) => {
                 if self.debug { println!("Call d16: {:#X}", d16); }
                 self.pc += 3;
@@ -1061,13 +1119,13 @@ impl CPU {
                 self.pc = *d16;
                 self.t += 24;
                 self.m += 6;
-            },
+            }
             Instruction::Ret => {
                 if self.debug { println!("RET"); }
                 self.pc = self.pop_from_stack(mmu);
                 self.t += 16;
                 self.m += 4;
-            },
+            }
             Instruction::PushAf => {
                 if self.debug { println!("Push AF"); }
                 let a16 = (self.a as u16) << 8;
@@ -1076,7 +1134,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 16;
                 self.m += 4;
-            },
+            }
             Instruction::PushBc => {
                 if self.debug { println!("Push BC"); }
                 let b16 = (self.b as u16) << 8;
@@ -1085,7 +1143,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 16;
                 self.m += 4;
-            },
+            }
             Instruction::PushDe => {
                 if self.debug { println!("Push DE"); }
                 let d16 = (self.d as u16) << 8;
@@ -1094,7 +1152,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 16;
                 self.m += 4;
-            },
+            }
             Instruction::PushHl => {
                 if self.debug { println!("Push HL"); }
                 let h16 = (self.h as u16) << 8;
@@ -1103,7 +1161,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 16;
                 self.m += 4;
-            },
+            }
             Instruction::PopAf => {
                 if self.debug { println!("Pop AF"); }
                 let addr: u16 = self.pop_from_stack(mmu);
@@ -1112,7 +1170,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::PopDe => {
                 if self.debug { println!("Pop DE"); }
                 let addr: u16 = self.pop_from_stack(mmu);
@@ -1121,7 +1179,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::PopHl => {
                 if self.debug { println!("Pop HL"); }
                 let addr: u16 = self.pop_from_stack(mmu);
@@ -1130,7 +1188,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::PopBc => {
                 if self.debug { println!("Pop BC"); }
                 let addr: u16 = self.pop_from_stack(mmu);
@@ -1139,79 +1197,78 @@ impl CPU {
                 self.pc += 1;
                 self.t += 12;
                 self.m += 3;
-            },
+            }
             Instruction::RlA => {
                 if self.debug { println!("RL A"); }
                 self.a = self.do_rl_n(self.a);
-            },
+            }
             Instruction::RlB => {
                 if self.debug { println!("RL B"); }
                 self.b = self.do_rl_n(self.b);
-            },
+            }
             Instruction::RlC => {
                 if self.debug { println!("RL C"); }
                 self.c = self.do_rl_n(self.c);
-            },
+            }
             Instruction::RlD => {
                 if self.debug { println!("RL D"); }
                 self.d = self.do_rl_n(self.d);
-            },
+            }
             Instruction::RlE => {
                 if self.debug { println!("RL E"); }
                 self.e = self.do_rl_n(self.e);
-            },
+            }
             Instruction::RlH => {
                 if self.debug { println!("RL H"); }
                 self.h = self.do_rl_n(self.h);
-            },
+            }
             Instruction::RlL => {
                 if self.debug { println!("RL L"); }
                 self.l = self.do_rl_n(self.l);
-            },
+            }
             Instruction::RLA => {
                 if self.debug { println!("RLA"); }
                 self.a = self.do_rl_n(self.a);
                 self.pc -= 1;
                 self.t -= 4;
                 self.m -= 1;
-            },
+            }
             Instruction::CpA => {
                 if self.debug { println!("CP A") };
                 let _ = self.do_sub(self.a, self.a);
-            },
+            }
             Instruction::CpB => {
                 if self.debug { println!("CP B") };
                 let _ = self.do_sub(self.a, self.b);
-            },
+            }
             Instruction::CpC => {
                 if self.debug { println!("CP C") };
                 let _ = self.do_sub(self.a, self.c);
-            },
+            }
             Instruction::CpD => {
                 if self.debug { println!("CP D") };
                 let _ = self.do_sub(self.a, self.d);
-            },
+            }
             Instruction::CpE => {
                 if self.debug { println!("CP E") };
                 let _ = self.do_sub(self.a, self.e);
-            },
+            }
             Instruction::CpH => {
                 if self.debug { println!("CP H") };
                 let _ = self.do_sub(self.a, self.h);
-            },
+            }
             Instruction::CpL => {
                 if self.debug { println!("CP L") };
                 let _ = self.do_sub(self.a, self.l);
-            },
+            }
             Instruction::CpHl => {
                 if self.debug { println!("CP HL") };
                 let h16 = (self.h as u16) << 8;
                 let hl: u16 = h16 | (self.l as u16);
                 let _ = self.do_sub(self.a, mmu.read_byte(hl));
-                self.pc += 1;
                 self.t += 4;
                 self.m += 1;
-            },
+            }
             Instruction::Cp(n) => {
                 if self.debug { println!("CP n: {:#X}", n) };
                 let ly = mmu.read_byte(0xFF44);
@@ -1228,7 +1285,7 @@ impl CPU {
                 self.pc += 1;
                 self.t += 4;
                 self.m += 1;
-            },
+            }
             _ => panic!(
                 "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
                 mmu, self, instruction, self.pc
