@@ -4,6 +4,7 @@ pub enum Instruction {
     LdBc(u16),
     LdDe(u16),
     LdHl(u16),
+    LdHln(u8),
     LdSp(u16),
     LdA(u8),
     LdB(u8),
@@ -28,6 +29,7 @@ pub enum Instruction {
     LdFf00Ca,
     LddHlA,
     LdiHlA,
+    LdiAHl,
     LdABc,
     LdADe,
     LdAb,
@@ -129,4 +131,6 @@ pub enum Instruction {
     CpL,
     CpHl,
     Cp(u8),
+    Di,
+    Ei,
 }

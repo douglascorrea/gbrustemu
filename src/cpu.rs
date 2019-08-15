@@ -17,6 +17,7 @@ pub struct CPU {
     sp: u16,
     t: usize,
     m: usize,
+    ime: bool,
     last_t: usize,
     last_m: usize,
     debug: bool,
@@ -26,7 +27,7 @@ impl fmt::Debug for CPU {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "CPU {{ A: {:#X}, B: {:#X}, C: {:#X}, D: {:#X}, E: {:#X}, H: {:#X}, L: {:#X} }} \nflags: {{ Z: {:?}, N: {:?}, H: {:?}, C: {:?} }}\n{{ pc: {:#X}, sp: {:#X} }}",
+            "CPU {{ A: {:#X}, B: {:#X}, C: {:#X}, D: {:#X}, E: {:#X}, H: {:#X}, L: {:#X} }} \nflags: {{ Z: {:?}, N: {:?}, H: {:?}, C: {:?} }}\n{{ pc: {:#X}, sp: {:#X} }}, ime: {:?}",
             self.a,
             self.b,
             self.c,
@@ -39,7 +40,8 @@ impl fmt::Debug for CPU {
             self.get_h_flag(),
             self.get_c_flag(),
             self.pc,
-            self.sp
+            self.sp,
+            self.ime
         )
     }
 }
@@ -59,6 +61,7 @@ impl CPU {
             sp: 0,
             t: 0,
             m: 0,
+            ime: false,
             last_t: 0,
             last_m: 0,
             debug: false,
@@ -284,6 +287,8 @@ impl CPU {
 
         match byte {
             0x00 => Instruction::Nop,
+            0xF3 => Instruction::Di,
+            0xFB => Instruction::Ei,
             0x01 => Instruction::LdBc(d16),
             0x3E => Instruction::LdA(n1 as u8),
             0x06 => Instruction::LdB(n1 as u8),
@@ -300,6 +305,7 @@ impl CPU {
             0x67 => Instruction::LdHa,
             0x6F => Instruction::LdLa,
             0x77 => Instruction::LdHlA,
+            0x36 => Instruction::LdHln(n1 as u8),
             0xEA => Instruction::LdXxA(d16),
             0x1A => Instruction::LdADe,
             0x0A => Instruction::LdABc,
@@ -322,6 +328,7 @@ impl CPU {
             0xC3 => Instruction::Jp(d16),
             0x32 => Instruction::LddHlA,
             0x22 => Instruction::LdiHlA,
+            0x2A => Instruction::LdiAHl,
             0x38 => Instruction::JrC(n1 as i8),
             0xAF => Instruction::XorA,
             0xA8 => Instruction::XorB,
@@ -521,6 +528,18 @@ impl CPU {
                 self.t += 4;
                 self.m += 1;
             },
+            Instruction::Di => {
+                self.ime = false;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            },
+            Instruction::Ei => {
+                self.ime = true;
+                self.pc += 1;
+                self.t += 4;
+                self.m += 1;
+            }
             Instruction::LdA(n) => {
                 if self.debug {
                     println!("LD A, n: {:#X}", n);
@@ -649,6 +668,14 @@ impl CPU {
             }
             Instruction::LdLa => {
                 self.do_ld_reg_to_reg("l", "a");
+            },
+            Instruction::LdHln(n) => {
+                let h16 = (self.h as u16) << 8;
+                let hl: u16 = h16 | (self.l as u16);
+                mmu.write_byte(hl, *n);
+                self.pc += 2;
+                self.t += 12;
+                self.m += 3;
             }
             Instruction::LdADe => {
                 if self.debug {
@@ -737,7 +764,19 @@ impl CPU {
                 self.pc += 1;
                 self.t += 8;
                 self.m += 2;
-            }
+            },
+            Instruction::LdiAHl => {
+                if self.debug { println!("LD A, (HL+)"); }
+                let h16 = (self.h as u16) << 8;
+                let mut hl: u16 = h16 | (self.l as u16);
+                self.a = mmu.read_byte(hl);
+                hl = hl.wrapping_add(1);
+                self.h = ((hl & 0xFF00) >> 8) as u8;
+                self.l = (hl & 0x00FF) as u8;
+                self.pc += 1;
+                self.t += 8;
+                self.m += 2;
+            },
             Instruction::LdFf00U8a(n) => {
                 if self.debug {
                     println!("LD (FF00+u8) A n(u8): {:#X}", n);
@@ -1296,6 +1335,7 @@ impl CPU {
     pub fn run_instruction(&mut self, mmu: &mut MMU, ppu: &mut PPU) {
         self.last_m = self.m;
         self.last_t = self.t;
+
         // fetch
         let byte = mmu.read_byte(self.pc);
         // decode
