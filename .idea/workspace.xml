@@ -15,7 +15,6 @@
     <list default="true" id="98a8971c-d45e-4aae-b0d2-4d7703e6b122" name="Default Changelist" comment="kkk">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cpu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cpu.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/instruction.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/instruction.rs" afterDir="false" />
     </list>
     <list id="445c8ac6-8e3c-41f8-ba24-79d2c6a2005a" name="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;" comment="Revert &quot;Workking on calling PPU method from mmu.write_data, facing Ownership problems&quot;&#10;&#10;This reverts commit 9843373f" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -148,7 +147,8 @@
       <workItem from="1565735073841" duration="1638000" />
       <workItem from="1565741551804" duration="4078000" />
       <workItem from="1565745654895" duration="1063000" />
-      <workItem from="1565824611697" duration="4266000" />
+      <workItem from="1565824611697" duration="5019000" />
+      <workItem from="1566255297855" duration="5617000" />
     </task>
     <servers />
   </component>
@@ -182,13 +182,8 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/cpu.rs</url>
-          <line>450</line>
+          <line>414</line>
           <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/cpu.rs</url>
-          <line>1346</line>
-          <option name="timeStamp" value="3" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
