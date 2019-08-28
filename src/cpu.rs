@@ -132,13 +132,15 @@ impl CPU {
         self.sp += 1;
         let addr_0 = mmu.read_byte(self.sp);
         self.sp += 1;
-        let addr_1 = mmu.read_byte(self.sp);
+GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
         let addr_016 = (addr_0 as u16) << 8;
         let addr: u16 = addr_016 | (addr_1 as u16);
         addr
     }
 
-    fn do_bit_opcode(&mut self, bit: bool) {
+    fn do_bit_opcode(&mut self, reg_value: u8, bit_mask: u8) {
+        let bit_test: u8 = reg_value & bit_mask;
+        let bit = bit_test != bit_mask;
         if bit {
             self.set_z_flag();
         } else {
@@ -146,7 +148,7 @@ impl CPU {
         }
         self.reset_n_flag();
         self.set_h_flag();
-        self.pc += 2;
+        self.inc_pc_t(2, 8);
     }
     fn calc_half_carry_on_u16_sum(&self, value_a: u16, value_b: u16) -> bool {
         ((value_a & 0xFFF) + (value_b & 0xFFF)) & 0x1000 == 0x1000
@@ -365,47 +367,6 @@ impl CPU {
             0xBE => Instruction::CpHl,
             0xFE => Instruction::Cp(n1 as u8),
             0xCB => match cb_opcode {
-                0x40 => Instruction::BitbB(0b0000_0001),
-                0x41 => Instruction::BitbC(0b0000_0001),
-                0x42 => Instruction::BitbD(0b0000_0001),
-                0x43 => Instruction::BitbE(0b0000_0001),
-                0x44 => Instruction::BitbH(0b0000_0001),
-                0x45 => Instruction::BitbL(0b0000_0001),
-                0x46 => Instruction::BitbHL(0b0000_0001),
-                0x47 => Instruction::BitbA(0b0000_0001),
-                0x48 => Instruction::BitbB(0b0000_0010),
-                0x49 => Instruction::BitbC(0b0000_0010),
-                0x4A => Instruction::BitbD(0b0000_0010),
-                0x4B => Instruction::BitbE(0b0000_0010),
-                0x4C => Instruction::BitbH(0b0000_0010),
-                0x4D => Instruction::BitbL(0b0000_0010),
-                0x4E => Instruction::BitbHL(0b0000_0010),
-                0x4F => Instruction::BitbA(0b0000_0010),
-                0x50 => Instruction::BitbB(0b0000_0100),
-                0x51 => Instruction::BitbC(0b0000_0100),
-                0x52 => Instruction::BitbD(0b0000_0100),
-                0x53 => Instruction::BitbE(0b0000_0100),
-                0x54 => Instruction::BitbH(0b0000_0100),
-                0x55 => Instruction::BitbL(0b0000_0100),
-                0x56 => Instruction::BitbHL(0b0000_0100),
-                0x57 => Instruction::BitbA(0b0000_0100),
-                0x58 => Instruction::BitbB(0b0000_1000),
-                0x59 => Instruction::BitbC(0b0000_1000),
-                0x5A => Instruction::BitbD(0b0000_1000),
-                0x5B => Instruction::BitbE(0b0000_1000),
-                0x5C => Instruction::BitbH(0b0000_1000),
-                0x5D => Instruction::BitbL(0b0000_1000),
-                0x5E => Instruction::BitbHL(0b0000_1000),
-                0x5F => Instruction::BitbA(0b0000_1000),
-                0x7C => Instruction::BitbH(0b1000_0000),
-                0x17 => Instruction::RlA,
-                0x10 => Instruction::RlB,
-                0x11 => Instruction::RlC,
-                0x12 => Instruction::RlD,
-                0x13 => Instruction::RlE,
-                0x14 => Instruction::RlH,
-                0x15 => Instruction::RlL,
-                0x16 => Instruction::RlHl,
                 _ => panic!(
                     "DECODING CB PREFIX: Unreconized MMU STATE: {:?}\ncb_opcode {:#X} on pc {:#X}\n CPU STATE: {:?}",
                     mmu, cb_opcode, self.pc as u16, self
@@ -660,90 +621,49 @@ impl CPU {
                     self.set_z_flag();
                 }
                 self.inc_pc_t(1,4)
-            }
-            Instruction::BitbA(bit_mask) => {
-                let bit_mask = 0b0000_0001;
-                if self.debug {
-                    println!("Bit b,A b: {:b}", bit_mask);
-                }
-                let bit_test: u8 = self.a & *bit_mask;
-                self.do_bit_opcode(*bit_mask != bit_test);
-                self.t += 8;
-                self.m += 2;
-            }
-            Instruction::BitbB(bit_mask) => {
-                if self.debug {
-                    println!("Bit b,B b: {:b}", bit_mask);
-                }
-                let bit_test: u8 = self.b & *bit_mask;
-                self.do_bit_opcode(*bit_mask != bit_test);
-                self.t += 8;
-                self.m += 2;
-            }
-            Instruction::BitbC(bit_mask) => {
-                if self.debug {
-                    println!("Bit b,C b: {:b}", bit_mask);
-                }
-                let bit_test: u8 = self.c & *bit_mask;
-                self.do_bit_opcode(*bit_mask != bit_test);
-                self.t += 8;
-                self.m += 2;
-            }
-            Instruction::BitbD(bit_mask) => {
-                if self.debug {
-                    println!("Bit b,D b: {:b}", bit_mask);
-                }
-                let bit_test: u8 = self.d & *bit_mask;
-                self.do_bit_opcode(*bit_mask != bit_test);
-                self.t += 8;
-                self.m += 2;
-            }
-            Instruction::BitbE(bit_mask) => {
-                if self.debug {
-                    println!("Bit b,E b: {:b}", bit_mask);
-                }
-                let bit_test: u8 = self.e & *bit_mask;
-                self.do_bit_opcode(*bit_mask != bit_test);
-                self.t += 8;
-                self.m += 2;
-            }
-            Instruction::BitbH(bit_mask) => {
-                if self.debug {
-                    println!(
-                        "BIT n,H - before, b: {:b}, H: {:#X}, Z: {:?}, N: {:?}, H(bit): {:?}, C: {:?}",
-                        bit_mask,
-                        self.h,
-                        self.get_z_flag(),
-                        self.get_n_flag(),
-                        self.get_h_flag(),
-                        self.get_c_flag()
-                    );
-                }
-                let bit_test: u8 = self.h & *bit_mask;
-                self.do_bit_opcode(*bit_mask != bit_test);
-                if self.debug {
-                    println!(
-                        "BIT n,H - after, b: {:b}, H: {:#X}, Z: {:?}, N: {:?}, H(bit): {:?}, C: {:?}",
-                        bit_mask,
-                        self.h,
-                        self.get_z_flag(),
-                        self.get_n_flag(),
-                        self.get_h_flag(),
-                        self.get_c_flag()
-                    );
-                }
-                self.t += 8;
-                self.m += 2;
-            }
-            Instruction::BitbL(bit_mask) => {
-                if self.debug {
-                    println!("Bit b,L b: {:b}", bit_mask);
-                }
-                let bit_test: u8 = self.l & *bit_mask;
-                self.do_bit_opcode(*bit_mask != bit_test);
-                self.t += 8;
-                self.m += 2;
-            }
+            },
+            0xCB => match cb_opcode {
+                0x40 => self.do_bit_opcode(self.b, 0b0000_0001),
+                0x41 => self.do_bit_opcode(self.c, 0b0000_0001),
+                0x42 => self.do_bit_opcode(self.d, 0b0000_0001),
+                0x43 => self.do_bit_opcode(self.e, 0b0000_0001),
+                0x44 => self.do_bit_opcode(self.h, 0b0000_0001),
+                0x45 => self.do_bit_opcode(self.l, 0b0000_0001),
+                0x47 => self.do_bit_opcode(self.a, 0b0000_0001),
+                0x48 => self.do_bit_opcode(self.b, 0b0000_0010),
+                0x49 => self.do_bit_opcode(self.c, 0b0000_0010),
+                0x4A => self.do_bit_opcode(self.d, 0b0000_0010),
+                0x4B => self.do_bit_opcode(self.e, 0b0000_0010),
+                0x4C => self.do_bit_opcode(self.h, 0b0000_0010),
+                0x4D => self.do_bit_opcode(self.l, 0b0000_0010),
+                0x4F => self.do_bit_opcode(self.a, 0b0000_0010),
+                0x50 => self.do_bit_opcode(self.b, 0b0000_0100),
+                0x51 => self.do_bit_opcode(self.c, 0b0000_0100),
+                0x52 => self.do_bit_opcode(self.d, 0b0000_0100),
+                0x53 => self.do_bit_opcode(self.e, 0b0000_0100),
+                0x54 => self.do_bit_opcode(self.h, 0b0000_0100),
+                0x55 => self.do_bit_opcode(self.l, 0b0000_0100),
+                0x57 => self.do_bit_opcode(self.a, 0b0000_0100),
+                0x58 => self.do_bit_opcode(self.b, 0b0000_1000),
+                0x59 => self.do_bit_opcode(self.c, 0b0000_1000),
+                0x5A => self.do_bit_opcode(self.d, 0b0000_1000),
+                0x5B => self.do_bit_opcode(self.e, 0b0000_1000),
+                0x5C => self.do_bit_opcode(self.h, 0b0000_1000),
+                0x5D => self.do_bit_opcode(self.l, 0b0000_1000),
+                0x5F => self.do_bit_opcode(self.a, 0b0000_1000),
+                0x7c => self.do_bit_opcode(self.h, 0b1000_0000),
+                0x17 => self.a = self.do_rl_n(self.a),
+                0x10 => self.b = self.do_rl_n(self.b),
+                0x11 => self.c = self.do_rl_n(self.c),
+                0x12 => self.d = self.do_rl_n(self.d),
+                0x13 => self.e = self.do_rl_n(self.e),
+                0x14 => self.h = self.do_rl_n(self.e),
+                0x15 => self.l = self.do_rl_n(self.l),
+                _ => panic!(
+                    "DECODING CB PREFIX: Unreconized MMU STATE: {:?}\ncb_opcode {:#X} on pc {:#X}\n CPU STATE: {:?}",
+                    mmu, cb_opcode, self.pc as u16, self
+                ),
+            },
             Instruction::JrNz(n) => {
                 if self.debug {
                     println!("JR NZ n: {:#X}", n);
@@ -1076,34 +996,6 @@ impl CPU {
                 self.pc += 1;
                 self.t += 12;
                 self.m += 3;
-            }
-            Instruction::RlA => {
-                if self.debug { println!("RL A"); }
-                self.a = self.do_rl_n(self.a);
-            }
-            Instruction::RlB => {
-                if self.debug { println!("RL B"); }
-                self.b = self.do_rl_n(self.b);
-            }
-            Instruction::RlC => {
-                if self.debug { println!("RL C"); }
-                self.c = self.do_rl_n(self.c);
-            }
-            Instruction::RlD => {
-                if self.debug { println!("RL D"); }
-                self.d = self.do_rl_n(self.d);
-            }
-            Instruction::RlE => {
-                if self.debug { println!("RL E"); }
-                self.e = self.do_rl_n(self.e);
-            }
-            Instruction::RlH => {
-                if self.debug { println!("RL H"); }
-                self.h = self.do_rl_n(self.h);
-            }
-            Instruction::RlL => {
-                if self.debug { println!("RL L"); }
-                self.l = self.do_rl_n(self.l);
             }
             Instruction::RLA => {
                 if self.debug { println!("RLA"); }
