@@ -268,6 +268,27 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
         new_register_value
     }
 
+    fn do_jump(&mut self, jump: bool, n1: i8) {
+        self.pc = self.pc + 2;
+        if jump {
+            self.pc = self.pc.wrapping_add(n1 as u16);
+            self.t += 12;
+        } else {
+            self.t += 8;
+        }
+
+    }
+
+    fn h_l_to_hl(&self) -> u16 {
+        let h16 = (self.h as u16) << 8;
+        h16 | (self.l as u16)
+    }
+
+    fn hl_to_h_l(&mut self, hl: u16) {
+        self.h = ((hl & 0xFF00) >> 8) as u8;
+        self.l = (hl & 0x00FF) as u8;
+    }
+
     fn decode(&mut self, byte: u8, mmu: &MMU) -> Instruction {
         if self.debug {
             println!("Decoding PC: {:#X}", self.pc);
@@ -288,14 +309,7 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
         let cb_d16: u16 = (cb_n2 << 8) | cb_n1;
 
         match byte {
-            0x0A => Instruction::LdABc,
-            0x18 => Instruction::Jr(n1 as i8),
-            0x20 => Instruction::JrNz(n1 as i8),
-            0x28 => Instruction::JrZ(n1 as i8),
-            0x30 => Instruction::JrNc(n1 as i8),
-            0xC3 => Instruction::Jp(d16),
             0x2A => Instruction::LdiAHl,
-            0x38 => Instruction::JrC(n1 as i8),
             0xAF => Instruction::XorA,
             0xA8 => Instruction::XorB,
             0xA9 => Instruction::XorC,
@@ -304,15 +318,7 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
             0xAC => Instruction::XorH,
             0xAD => Instruction::XorL,
             0xAE => Instruction::XorHl,
-            0x3C => Instruction::IncA,
-            0x04 => Instruction::IncB,
-            0x0C => Instruction::IncC,
-            0x14 => Instruction::IncD,
-            0x1C => Instruction::IncE,
-            0x24 => Instruction::IncH,
-            0x2C => Instruction::IncL,
             0x23 => Instruction::IncHlNoflags,
-            0x34 => Instruction::IncHl,
             0x13 => Instruction::IncDe,
             0x03 => Instruction::IncBc,
             0x3D => Instruction::DecA,
@@ -533,8 +539,7 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
                 self.do_ld_reg_to_reg("l", "a");
             },
             0x36 => {
-                let h16 = (self.h as u16) << 8;
-                let hl: u16 = h16 | (self.l as u16);
+                let hl = self.h_l_to_hl();
                 mmu.write_byte(hl, n1 as u8);
                 self.inc_pc_t(2, 12);
             }
@@ -563,8 +568,7 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
                 self.do_ld_reg_to_reg("a", "l");
             }
             0x77 => {
-                let h16 = (self.h as u16) << 8;
-                let hl: u16 = h16 | (self.l as u16);
+                let hl = self.h_l_to_hl();
                 mmu.write_byte(hl, self.a);
                 self.inc_pc_t(1, 8);
             }
@@ -573,8 +577,7 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
                 self.inc_pc_t(3, 16);
             }
             0x32 => {
-                let h16 = (self.h as u16) << 8;
-                let mut hl: u16 = h16 | (self.l as u16);
+                let mut hl = self.h_l_to_hl();
                 mmu.write_byte(hl, self.a);
                 hl = hl.wrapping_sub(1);
                 self.h = ((hl & 0xFF00) >> 8) as u8;
@@ -582,8 +585,7 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
                 self.inc_pc_t(1,8);
             }
             0x22 => {
-                let h16 = (self.h as u16) << 8;
-                let mut hl: u16 = h16 | (self.l as u16);
+                let mut hl = self.h_l_to_hl();
                 mmu.write_byte(hl, self.a);
                 hl = hl.wrapping_add(1);
                 self.h = ((hl & 0xFF00) >> 8) as u8;
@@ -591,9 +593,7 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
                 self.inc_pc_t(1,8);
             },
             0x2A => {
-                if self.debug { println!("LD A, (HL+)"); }
-                let h16 = (self.h as u16) << 8;
-                let mut hl: u16 = h16 | (self.l as u16);
+                let mut hl = self.h_l_to_hl();
                 self.a = mmu.read_byte(hl);
                 hl = hl.wrapping_add(1);
                 self.h = ((hl & 0xFF00) >> 8) as u8;
@@ -664,127 +664,23 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
                     mmu, cb_opcode, self.pc as u16, self
                 ),
             },
-            Instruction::JrNz(n) => {
-                if self.debug {
-                    println!("JR NZ n: {:#X}", n);
-                }
-                self.pc = self.pc + 2;
-                if self.debug {
-                    println!(
-                        "JR NZ, n - before, n: {:#X}, Z: {:?}, PC: {:#X}",
-                        n,
-                        self.get_z_flag(),
-                        self.pc
-                    );
-                }
-                if !self.get_z_flag() {
-                    self.pc = self.pc.wrapping_add(*n as u16);
-                    self.t += 12;
-                    self.m += 3;
-                } else {
-                    self.t += 8;
-                    self.m += 2;
-                }
-                if self.debug {
-                    println!(
-                        "JR NZ, n - before, n: {:#X}, Z: {:?}, PC: {:#X}",
-                        n,
-                        self.get_z_flag(),
-                        self.pc
-                    );
-                }
-            }
-            Instruction::JrZ(n) => {
-                if self.debug {
-                    println!("JR Z n: {:#X}", n);
-                }
-                self.pc = self.pc + 2;
-                if self.get_z_flag() {
-                    self.pc = self.pc.wrapping_add(*n as u16);
-                    self.t += 12;
-                    self.m += 3;
-                } else {
-                    self.t += 8;
-                    self.m += 2;
-                }
-            }
-            Instruction::JrNc(n) => {
-                if self.debug {
-                    println!("JR NC n: {:#X}", n);
-                }
-                self.pc = self.pc + 2;
-                if !self.get_c_flag() {
-                    self.pc = self.pc.wrapping_add(*n as u16);
-                    self.t += 12;
-                    self.m += 3;
-                } else {
-                    self.t += 8;
-                    self.m += 2;
-                }
-            }
-            Instruction::JrC(n) => {
-                if self.debug {
-                    println!("JR C n: {:#X}", n);
-                }
-                self.pc = self.pc + 2;
-                if self.get_c_flag() {
-                    self.pc = self.pc.wrapping_add(*n as u16);
-                    self.t += 12;
-                    self.m += 3;
-                } else {
-                    self.t += 8;
-                    self.m += 2;
-                }
-            }
-            Instruction::Jr(n) => {
-                if self.debug { println!("JR n: {:#X}", n); }
-                self.pc = self.pc + 2;
-                self.pc = self.pc.wrapping_add(*n as u16);
-                self.t += 12;
-                self.m += 3;
-            }
-            Instruction::Jp(d16) => {
-                if self.debug { println!("JP nn: {:#X}", d16); }
-                self.pc = *d16;
+            0x20 => self.do_jump(!self.get_z_flag(),n1 as i8),
+            0x28 => self.do_jump(self.get_z_flag(),n1 as i8),
+            0x30 => self.do_jump(!self.get_c_flag(),n1 as i8),
+            0x38 => self.do_jump(self.get_c_flag(),n1 as i8),
+            0x18 => self.do_jump(true,n1 as i8),
+            0xC3 => {
+                self.pc = d16;
                 self.t += 16;
-                self.m += 4;
             }
-            Instruction::IncA => {
-                if self.debug { println!("INC A"); }
-                self.a = self.do_inc_n(self.a);
-            }
-            Instruction::IncB => {
-                if self.debug { println!("INC B"); }
-                self.b = self.do_inc_n(self.b);
-            }
-            Instruction::IncC => {
-                if self.debug { println!("INC C"); }
-                self.c = self.do_inc_n(self.c);
-            }
-            Instruction::IncD => {
-                if self.debug { println!("INC D"); }
-                self.d = self.do_inc_n(self.d);
-            }
-            Instruction::IncE => {
-                if self.debug { println!("INC E") };
-                self.e = self.do_inc_n(self.e);
-            }
-            Instruction::IncH => {
-                if self.debug { println!("INC H") };
-                self.h = self.do_inc_n(self.h);
-            }
-            Instruction::IncL => {
-                if self.debug { println!("INC L") };
-                self.l = self.do_inc_n(self.l);
-            }
-            Instruction::IncHl => {
-                if self.debug { println!("INC (HL)") };
-                let h16 = (self.h as u16) << 8;
-                let mut hl: u16 = h16 | (self.l as u16);
-                hl = self.do_inc_d16(hl);
-                self.h = ((hl & 0xFF00) >> 8) as u8;
-                self.l = (hl & 0x00FF) as u8;
-            }
+            0x3C => self.a = self.do_inc_n(self.a),
+            0x04 => self.b = self.do_inc_n(self.b),
+            0x0C => self.c = self.do_inc_n(self.c),
+            0x14 => self.d = self.do_inc_n(self.d),
+            0x1C => self.e = self.do_inc_n(self.e),
+            0x24 => self.h = self.do_inc_n(self.h),
+            0x2C => self.l = self.do_inc_n(self.l),
+            0x34 => self.hl_to_h_l(self.do_inc_d16(self.h_l_to_hl())),
             Instruction::IncHlNoflags => {
                 if self.debug { println!("INC HL") };
                 let h16 = (self.h as u16) << 8;

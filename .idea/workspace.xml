@@ -185,7 +185,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/cpu.rs</url>
-          <line>375</line>
+          <line>381</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>
