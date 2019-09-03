@@ -132,7 +132,7 @@ impl CPU {
         self.sp += 1;
         let addr_0 = mmu.read_byte(self.sp);
         self.sp += 1;
-GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
+        let addr_1 = mmu.read_byte(self.sp);
         let addr_016 = (addr_0 as u16) << 8;
         let addr: u16 = addr_016 | (addr_1 as u16);
         addr
@@ -276,7 +276,6 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
         } else {
             self.t += 8;
         }
-
     }
 
     fn h_l_to_hl(&self) -> u16 {
@@ -317,55 +316,6 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
     fn af_to_a_f(&mut self, af: u16) {
         self.a = ((af & 0xFF00) >> 8) as u8;
         self.f = (af & 0x00FF) as u8;
-    }
-
-    fn decode(&mut self, byte: u8, mmu: &MMU) -> Instruction {
-
-        match byte {
-            0x2A => Instruction::LdiAHl,
-            0xAF => Instruction::XorA,
-            0xA8 => Instruction::XorB,
-            0xA9 => Instruction::XorC,
-            0xAA => Instruction::XorD,
-            0xAB => Instruction::XorE,
-            0xAC => Instruction::XorH,
-            0xAD => Instruction::XorL,
-            0xAE => Instruction::XorHl,
-            0xD6 => Instruction::Sub(n1 as u8),
-            0xC6 => Instruction::AddA(n1 as u8),
-            0xC4 => Instruction::CallNz(d16),
-            0xD4 => Instruction::CallNc(d16),
-            0xCC => Instruction::CallZ(d16),
-            0xDC => Instruction::CallC(d16),
-            0xCD => Instruction::Call(d16),
-            0xD5 => Instruction::PushDe,
-            0xE5 => Instruction::PushHl,
-            0xF1 => Instruction::PopAf,
-            0xC1 => Instruction::PopBc,
-            0xD1 => Instruction::PopDe,
-            0xE1 => Instruction::PopHl,
-            0x17 => Instruction::RLA,
-            0xBF => Instruction::CpA,
-            0xB8 => Instruction::CpB,
-            0xB9 => Instruction::CpC,
-            0xBA => Instruction::CpD,
-            0xBB => Instruction::CpE,
-            0xBC => Instruction::CpH,
-            0xBD => Instruction::CpL,
-            0xBE => Instruction::CpHl,
-            0xFE => Instruction::Cp(n1 as u8),
-            0xCB => match cb_opcode {
-                _ => panic!(
-                    "DECODING CB PREFIX: Unreconized MMU STATE: {:?}\ncb_opcode {:#X} on pc {:#X}\n CPU STATE: {:?}",
-                    mmu, cb_opcode, self.pc as u16, self
-                ),
-            },
-            0xEE => Instruction::Xor(n1 as u8),
-            _ => panic!(
-                "\nMMU STATE: {:?} \nCPU STATE: {:?}\nDECODING: Unreconized byte {:#X} on pc {:#X}",
-                mmu, self, byte, self.pc
-            ),
-        }
     }
 
     fn set_register(&mut self, register_name: &str, register_value: u8) {
@@ -592,7 +542,10 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
             }
             0x24 => self.h = self.do_inc_n(self.h),
             0x2C => self.l = self.do_inc_n(self.l),
-            0x34 => self.hl_to_h_l(self.do_inc_d16(self.h_l_to_hl())),
+            0x34 => {
+                let current_value = mmu.read_byte(self.h_l_to_hl());
+                mmu.write_byte(self.h_l_to_hl(), self.do_inc_n(current_value));
+            }
             0x23  => {
                 let mut hl= self.h_l_to_hl();
                 hl = hl.wrapping_add(1);
@@ -697,117 +650,67 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
                 let bc = self.b_c_to_bc();
                 self.push_to_stack(mmu, bc);
                 self.inc_pc_t(1, 16)
-            }
-            }
-            Instruction::PushDe => {
-                if self.debug { println!("Push DE"); }
-                let d16 = (self.d as u16) << 8;
-                let de: u16 = d16 | (self.e as u16);
+            },
+            0xD5 => {
+                let de = self.d_e_to_de();
                 self.push_to_stack(mmu, de);
-                self.pc += 1;
-                self.t += 16;
-                self.m += 4;
+                self.inc_pc_t(1, 16)
             }
-            Instruction::PushHl => {
-                if self.debug { println!("Push HL"); }
-                let h16 = (self.h as u16) << 8;
-                let hl: u16 = h16 | (self.l as u16);
+            0xE5 => {
+                let hl = self.h_l_to_hl();
                 self.push_to_stack(mmu, hl);
-                self.pc += 1;
-                self.t += 16;
-                self.m += 4;
+                self.inc_pc_t(1, 16)
             }
-            Instruction::PopAf => {
-                if self.debug { println!("Pop AF"); }
+            0xF1 => {
                 let addr: u16 = self.pop_from_stack(mmu);
-                self.a = ((addr & 0xFF00) >> 8) as u8;
-                self.f = (addr & 0x00FF) as u8;
-                self.pc += 1;
-                self.t += 12;
-                self.m += 3;
+                self.af_to_a_f(addr);
+                self.inc_pc_t(1, 12)
             }
-            Instruction::PopDe => {
-                if self.debug { println!("Pop DE"); }
+            0xD1 => {
                 let addr: u16 = self.pop_from_stack(mmu);
-                self.d = ((addr & 0xFF00) >> 8) as u8;
-                self.e = (addr & 0x00FF) as u8;
-                self.pc += 1;
-                self.t += 12;
-                self.m += 3;
+                self.de_to_d_e(addr);
+                self.inc_pc_t(1, 12)
             }
-            Instruction::PopHl => {
-                if self.debug { println!("Pop HL"); }
+            0xE1 => {
                 let addr: u16 = self.pop_from_stack(mmu);
-                self.h = ((addr & 0xFF00) >> 8) as u8;
-                self.l = (addr & 0x00FF) as u8;
-                self.pc += 1;
-                self.t += 12;
-                self.m += 3;
+                self.hl_to_h_l(addr);
+                self.inc_pc_t(1, 12)
             }
-            Instruction::PopBc => {
-                if self.debug { println!("Pop BC"); }
+            0xC1 => {
                 let addr: u16 = self.pop_from_stack(mmu);
-                self.b = ((addr & 0xFF00) >> 8) as u8;
-                self.c = (addr & 0x00FF) as u8;
-                self.pc += 1;
-                self.t += 12;
-                self.m += 3;
+                self.bc_to_b_c(addr);
+                self.inc_pc_t(1, 12)
             }
-            Instruction::RLA => {
-                if self.debug { println!("RLA"); }
+            0x17 => {
                 self.a = self.do_rl_n(self.a);
-                self.pc -= 1;
-                self.t -= 4;
-                self.m -= 1;
+                self.inc_pc_t(1, 4)
             }
-            Instruction::CpA => {
-                if self.debug { println!("CP A") };
-                let _ = self.do_sub(self.a, self.a);
-            }
-            Instruction::CpB => {
-                if self.debug { println!("CP B") };
-                let _ = self.do_sub(self.a, self.b);
-            }
-            Instruction::CpC => {
-                if self.debug { println!("CP C") };
-                let _ = self.do_sub(self.a, self.c);
-            }
-            Instruction::CpD => {
-                if self.debug { println!("CP D") };
-                let _ = self.do_sub(self.a, self.d);
-            }
-            Instruction::CpE => {
-                if self.debug { println!("CP E") };
-                let _ = self.do_sub(self.a, self.e);
-            }
-            Instruction::CpH => {
-                if self.debug { println!("CP H") };
-                let _ = self.do_sub(self.a, self.h);
-            }
-            Instruction::CpL => {
-                if self.debug { println!("CP L") };
-                let _ = self.do_sub(self.a, self.l);
-            }
-            Instruction::CpHl => {
-                if self.debug { println!("CP HL") };
-                let h16 = (self.h as u16) << 8;
-                let hl: u16 = h16 | (self.l as u16);
+            0xBF => { let _ = self.do_sub(self.a, self.a); },
+            0xB8 => { let _ = self.do_sub(self.a, self.b); },
+            0xB9 => { let _ = self.do_sub(self.a, self.c); },
+            0xBA => { let _ = self.do_sub(self.a, self.d); },
+            0xBB => { let _ = self.do_sub(self.a, self.e); },
+            0xBC => { let _ = self.do_sub(self.a, self.h); },
+            0xBD => { let _ = self.do_sub(self.a, self.l); },
+            0xBE => {
+                let hl = self.h_l_to_hl();
                 let _ = self.do_sub(self.a, mmu.read_byte(hl));
                 self.t += 4;
-                self.m += 1;
             }
-            Instruction::Cp(n) => {
-                if self.debug { println!("CP n: {:#X}", n) };
+            0xFE => {
                 let ly = mmu.read_byte(0xFF44);
-                let _ = self.do_sub(self.a, *n);
-                self.pc += 1;
-                self.t += 4;
-                self.m += 1;
+                let _ = self.do_sub(self.a, n1 as u8);
+                self.inc_pc_t(1, 4)
             }
-            _ => panic!(
-                "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:?} on pc {:#X}",
-                mmu, self, instruction, self.pc
-            ),
+            _ =>
+                {
+                    let flag: u8 = mmu.read_byte(0xFF50);
+                    println!("{:b}", flag);
+                    panic!(
+                        "\n MEM STATE: {:?} \nCPU STATE: {:?}\nEXECUTING: Unreconized instruction {:#X} on pc {:#X}",
+                        mmu, self, byte, self.pc
+                    )
+                },
         }
     }
 
@@ -815,26 +718,10 @@ GVHBJ V FTCRDVH B  = mmu.read_byte(self.sp);
         self.last_m = self.m;
         self.last_t = self.t;
 
-        // fetch
         let byte = mmu.read_byte(self.pc);
-        // decode
-        let instruction = self.decode(byte, mmu);
-        // execute
         self.execute(byte, mmu);
 
         let current_instruction_t_clocks_passed = self.t - self.last_t;
         ppu.step(current_instruction_t_clocks_passed, mmu);
-        //        if self.pc == 0x00E8 {
-        //            let bg_tile_set = ppu.get_bg_tile_set(mmu);
-        //            let mut i = 0;
-        //            //            while i < bg_tile_set.len() {
-        //            let tile = ppu.get_tile(mmu, 33168);
-        //            //                println!("TILE ADDR: {:?}", (0x8000 + i) as u16);
-        //            println!("TILE: {:?}", tile);
-        //            ppu.transform_tile_to_minifb_tile(&mmu, tile);
-        //            i += 16;
-        //            //            }
-        //            panic!("BGP Palette: {:b}", ppu.get_bgp(&mmu));
-        //        }
     }
 }

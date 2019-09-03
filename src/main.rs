@@ -16,11 +16,8 @@ fn main() {
     let mut mmu = MMU::new();
     mmu.from_rom_file(&rom_file);
 
-    // run make CPU run instructions over ram
-    //    println!("MMU BEFORE: {:?}", mmu);
     let mut cpu = CPU::new();
     let mut ppu = PPU::new();
-    //        cpu.set_debug_flag();
 
     let mut screen = vec![LIGHTEST_GREEN; SCREEN_WIDTH * SCREEN_HEIGHT];
     let mut window = Window::new(
@@ -35,15 +32,11 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         cpu.run_instruction(&mut mmu, &mut ppu);
-        //        let now = Instant::now();
         if ppu.is_lcd_enable(&mmu) {
             if mmu.dirty_viewport_flag || mmu.dirty_vram_flag {
                 let current_viewport = ppu.get_viewport();
                 window.update_with_buffer(current_viewport).unwrap();
             }
         }
-        //        println!("{:?}", Instant::now().duration_since(now));
-        //        println!("{:?}", ppu.get_scy(&mmu));
-        //        println!("{:?}", ppu.get_ly(&mmu));
     }
 }
